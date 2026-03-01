@@ -63,7 +63,7 @@ func ProjectRequestsBreakdown() cog.Builder[dashboard.Panel] {
 		Description("Request distribution across projects over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(6).
 		PieType(piechart.PieChartTypeDonut).
 		Legend(
 			piechart.NewPieChartLegendOptionsBuilder().

@@ -88,7 +88,8 @@ func FileOperations() cog.Builder[dashboard.Panel] {
 		ColorScheme(paletteColor())
 }
 
-// LinesChangedOverTime returns a timeseries of lines added and removed over time.
+// LinesChangedOverTime returns a network-style timeseries of lines added (above axis)
+// and removed (below axis) over time.
 func LinesChangedOverTime() cog.Builder[dashboard.Panel] {
 	return timeseries.NewPanelBuilder().
 		Title("Lines Changed Over Time").
@@ -103,10 +104,11 @@ func LinesChangedOverTime() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promRangeQuery(
-				`sum(rate(anthropic_tool_use_lines_removed_total{`+filter+`}[$__rate_interval]))`,
+				`-sum(rate(anthropic_tool_use_lines_removed_total{`+filter+`}[$__rate_interval]))`,
 				"Lines Removed",
 			),
 		).
+		FillOpacity(30).
 		Legend(defaultLegend()).
 		Tooltip(multiTooltip()).
 		Overrides([]cog.Builder[dashboard.DashboardFieldConfigSourceOverrides]{

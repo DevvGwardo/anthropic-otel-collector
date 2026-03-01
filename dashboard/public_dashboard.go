@@ -47,7 +47,8 @@ func buildPublicDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.ContentBlockTypes()).
 		WithPanel(panels.ServerToolUse()).
 		WithPanel(panels.AvgMessagesPerRequest()).
-		WithPanel(panels.StreamingVsNonStreaming())
+		WithPanel(panels.StreamingVsNonStreaming()).
+		WithPanel(panels.ThinkingEnabledRequests())
 
 	return builder.Build()
 }

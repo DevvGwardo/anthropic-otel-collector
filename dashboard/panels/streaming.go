@@ -64,7 +64,7 @@ func SSEEventTypesOverTime() cog.Builder[dashboard.Panel] {
 		Description("Rate of server-sent events by type over time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
+		Span(18).
 		WithTarget(promQuery(
 			fmt.Sprintf(`sum by (event_type) (rate(%s{%s}[$__rate_interval]))`, MetricStreamingEvents, filter),
 			"{{event_type}}",
@@ -116,7 +116,7 @@ func StreamingVsNonStreaming() cog.Builder[dashboard.Panel] {
 		Description("Distribution of streaming and non-streaming requests over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
+		Span(6).
 		WithTarget(instantQuery(
 			fmt.Sprintf(`sum(increase(%s{%s, anthropic_request_streaming="true"}[$__range]))`, MetricRequests, filter),
 			"Streaming",

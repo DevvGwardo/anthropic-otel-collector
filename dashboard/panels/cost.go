@@ -63,8 +63,8 @@ func CostByCategory() cog.Builder[dashboard.Panel] {
 		PieType(piechart.PieChartTypeDonut).
 		Legend(
 			piechart.NewPieChartLegendOptionsBuilder().
-				DisplayMode(common.LegendDisplayModeList).
-				Placement(common.LegendPlacementBottom).
+				DisplayMode(common.LegendDisplayModeTable).
+				Placement(common.LegendPlacementRight).
 				ShowLegend(true).
 				Values([]piechart.PieChartLegendValues{
 					piechart.PieChartLegendValuesValue,

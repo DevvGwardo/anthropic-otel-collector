@@ -27,7 +27,7 @@ func ProjectCostBreakdown() cog.Builder[dashboard.Panel] {
 		Description("Cost distribution across projects over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(6).
 		Unit("currencyUSD").
 		PieType(piechart.PieChartTypeDonut).
 		Legend(
@@ -58,7 +58,7 @@ func ProjectRequestsOverTime() cog.Builder[dashboard.Panel] {
 		Description("Request rate broken down by project").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(16).
+		Span(18).
 		FillOpacity(30).
 		Stacking(
 			common.NewStackingConfigBuilder().

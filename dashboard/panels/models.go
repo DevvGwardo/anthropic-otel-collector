@@ -32,7 +32,7 @@ func RequestsByModel() cog.Builder[dashboard.Panel] {
 		Description("Distribution of requests by model over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(6).
 		WithTarget(instantQuery(
 			fmt.Sprintf(`sum by (gen_ai_request_model) (increase(%s{%s}[$__range]))`, MetricRequests, filter),
 			"{{gen_ai_request_model}}",
@@ -56,7 +56,7 @@ func StopReasons() cog.Builder[dashboard.Panel] {
 		Description("Distribution of stop reasons over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(6).
 		WithTarget(instantQuery(
 			fmt.Sprintf(`sum by (stop_reason) (increase(%s{%s}[$__range]))`, MetricStopReason, filter),
 			"{{stop_reason}}",
@@ -80,7 +80,7 @@ func ContentBlockTypes() cog.Builder[dashboard.Panel] {
 		Description("Distribution of content block types over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(12).
 		WithTarget(instantQuery(
 			fmt.Sprintf(`sum by (type) (increase(%s{%s}[$__range]))`, MetricContentBlocks, filter),
 			"{{type}}",

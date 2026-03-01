@@ -75,7 +75,7 @@ func InputVsOutputBreakdown() cog.Builder[dashboard.Panel] {
 		Description("Distribution of input and output tokens over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(6).
 		PieType(piechart.PieChartTypeDonut).
 		Legend(
 			piechart.NewPieChartLegendOptionsBuilder().
@@ -113,7 +113,7 @@ func CacheTokensDetail() cog.Builder[dashboard.Panel] {
 		Description("Rate of cache read and cache creation tokens").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(9).
 		Unit("short").
 		Legend(defaultLegend()).
 		Tooltip(multiTooltip()).
@@ -138,7 +138,7 @@ func OutputUtilization() cog.Builder[dashboard.Panel] {
 		Description("Average output token utilization ratio over time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(8).
+		Span(9).
 		Unit("percentunit").
 		Legend(defaultLegend()).
 		Tooltip(multiTooltip()).
