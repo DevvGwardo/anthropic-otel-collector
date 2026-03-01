@@ -43,6 +43,12 @@ type Tool struct {
 	InputSchema json.RawMessage `json:"input_schema,omitempty"`
 }
 
+// Container represents code execution container metadata.
+type Container struct {
+	ID        string `json:"id"`
+	ExpiresAt string `json:"expires_at"`
+}
+
 // AnthropicResponse represents an Anthropic Messages API response.
 type AnthropicResponse struct {
 	ID           string         `json:"id"`
@@ -53,6 +59,7 @@ type AnthropicResponse struct {
 	StopReason   string         `json:"stop_reason"`
 	StopSequence *string        `json:"stop_sequence,omitempty"`
 	Usage        Usage          `json:"usage"`
+	Container    *Container     `json:"container,omitempty"`
 }
 
 // ContentBlock represents a content block in a response.
@@ -63,6 +70,7 @@ type ContentBlock struct {
 	Name      string          `json:"name,omitempty"`
 	Input     json.RawMessage `json:"input,omitempty"`
 	Thinking  string          `json:"thinking,omitempty"`
+	Data      string          `json:"data,omitempty"`
 	Citations json.RawMessage `json:"citations,omitempty"`
 }
 
@@ -134,6 +142,7 @@ type MessageStartInfo struct {
 	StopReason   *string        `json:"stop_reason"`
 	StopSequence *string        `json:"stop_sequence"`
 	Usage        Usage          `json:"usage"`
+	Container    *Container     `json:"container,omitempty"`
 }
 
 // ContentBlockStartData represents the data field of a content_block_start SSE event.
@@ -202,6 +211,7 @@ type RateLimitInfo struct {
 	OrganizationID         string
 	RetryAfter             string
 	UnifiedStatus          string
+	CreditUsageUSD         float64
 }
 
 // RequestsUtilization returns the utilization ratio for requests.
@@ -229,22 +239,25 @@ func (r RateLimitInfo) OutputTokensUtilization() float64 {
 }
 
 // ExtractRateLimitInfo extracts rate limit information from HTTP response headers.
+// It supports both the old "anthropic-ratelimit-*" headers (more granular) and
+// the new "ratelimit-*" format, preferring old headers when available.
 func ExtractRateLimitInfo(headers http.Header) RateLimitInfo {
 	return RateLimitInfo{
-		RequestsLimit:         headerInt(headers, "anthropic-ratelimit-requests-limit"),
-		RequestsRemaining:     headerInt(headers, "anthropic-ratelimit-requests-remaining"),
+		RequestsLimit:         headerIntFallback(headers, "anthropic-ratelimit-requests-limit", "ratelimit-limit"),
+		RequestsRemaining:     headerIntFallback(headers, "anthropic-ratelimit-requests-remaining", "ratelimit-remaining"),
 		InputTokensLimit:      headerInt(headers, "anthropic-ratelimit-input-tokens-limit"),
 		InputTokensRemaining:  headerInt(headers, "anthropic-ratelimit-input-tokens-remaining"),
 		OutputTokensLimit:     headerInt(headers, "anthropic-ratelimit-output-tokens-limit"),
 		OutputTokensRemaining: headerInt(headers, "anthropic-ratelimit-output-tokens-remaining"),
-		RequestsReset:         headers.Get("anthropic-ratelimit-requests-reset"),
+		RequestsReset:         headerStrFallback(headers, "anthropic-ratelimit-requests-reset", "ratelimit-reset"),
 		InputTokensReset:      headers.Get("anthropic-ratelimit-input-tokens-reset"),
 		OutputTokensReset:     headers.Get("anthropic-ratelimit-output-tokens-reset"),
-		TokensLimit:           headerInt(headers, "anthropic-ratelimit-tokens-limit"),
-		TokensRemaining:       headerInt(headers, "anthropic-ratelimit-tokens-remaining"),
+		TokensLimit:           headerIntFallback(headers, "anthropic-ratelimit-tokens-limit", "ratelimit-limit"),
+		TokensRemaining:       headerIntFallback(headers, "anthropic-ratelimit-tokens-remaining", "ratelimit-remaining"),
 		OrganizationID:        headers.Get("x-anthropic-organization-id"),
 		RetryAfter:            headers.Get("retry-after"),
 		UnifiedStatus:         headers.Get("x-ratelimit-status"),
+		CreditUsageUSD:        headerFloat64(headers, "anthropic-organization-user-credit-usage-usd"),
 	}
 }
 
@@ -255,6 +268,32 @@ func headerInt(headers http.Header, key string) int {
 	}
 	n, _ := strconv.Atoi(v)
 	return n
+}
+
+// headerIntFallback tries the primary header, falling back to the fallback header.
+func headerIntFallback(headers http.Header, primary, fallback string) int {
+	if v := headerInt(headers, primary); v != 0 {
+		return v
+	}
+	return headerInt(headers, fallback)
+}
+
+// headerStrFallback tries the primary header, falling back to the fallback header.
+func headerStrFallback(headers http.Header, primary, fallback string) string {
+	if v := headers.Get(primary); v != "" {
+		return v
+	}
+	return headers.Get(fallback)
+}
+
+// headerFloat64 parses a float64 from a response header.
+func headerFloat64(headers http.Header, key string) float64 {
+	v := headers.Get(key)
+	if v == "" {
+		return 0
+	}
+	f, _ := strconv.ParseFloat(v, 64)
+	return f
 }
 
 // SystemPromptSize returns the size of the system prompt in characters.
@@ -361,6 +400,28 @@ func (r *AnthropicResponse) ThinkingLength() int {
 		}
 	}
 	return total
+}
+
+// RedactedThinkingBlocks returns all redacted_thinking content blocks.
+func (r *AnthropicResponse) RedactedThinkingBlocks() []ContentBlock {
+	var blocks []ContentBlock
+	for _, block := range r.Content {
+		if block.Type == "redacted_thinking" {
+			blocks = append(blocks, block)
+		}
+	}
+	return blocks
+}
+
+// RedactedThinkingCount returns the number of redacted_thinking content blocks.
+func (r *AnthropicResponse) RedactedThinkingCount() int {
+	count := 0
+	for _, block := range r.Content {
+		if block.Type == "redacted_thinking" {
+			count++
+		}
+	}
+	return count
 }
 
 // ContentBlockCounts returns a map of content block type to count.

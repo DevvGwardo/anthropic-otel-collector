@@ -546,6 +546,136 @@ func TestExtractRateLimitInfo_NewFields(t *testing.T) {
 	assert.Equal(t, "rate_limited", info.UnifiedStatus)
 }
 
+// --- Credit usage header tests ---
+
+func TestExtractRateLimitInfo_CreditUsageUSD(t *testing.T) {
+	t.Run("present", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("anthropic-ratelimit-requests-limit", "1000")
+		headers.Set("anthropic-organization-user-credit-usage-usd", "12.50")
+
+		info := ExtractRateLimitInfo(headers)
+		assert.InDelta(t, 12.50, info.CreditUsageUSD, 0.001)
+	})
+
+	t.Run("absent", func(t *testing.T) {
+		headers := http.Header{}
+		info := ExtractRateLimitInfo(headers)
+		assert.Equal(t, 0.0, info.CreditUsageUSD)
+	})
+}
+
+func TestHeaderFloat64(t *testing.T) {
+	t.Run("valid float", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("x-cost", "3.14")
+		assert.InDelta(t, 3.14, headerFloat64(headers, "x-cost"), 0.001)
+	})
+
+	t.Run("empty header", func(t *testing.T) {
+		headers := http.Header{}
+		assert.Equal(t, 0.0, headerFloat64(headers, "x-cost"))
+	})
+
+	t.Run("invalid value", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("x-cost", "not-a-number")
+		assert.Equal(t, 0.0, headerFloat64(headers, "x-cost"))
+	})
+}
+
+// --- Rate limit header fallback tests ---
+
+func TestExtractRateLimitInfo_NewFormatOnly(t *testing.T) {
+	headers := http.Header{}
+	headers.Set("ratelimit-limit", "500")
+	headers.Set("ratelimit-remaining", "400")
+	headers.Set("ratelimit-reset", "2025-06-01T12:00:00Z")
+
+	info := ExtractRateLimitInfo(headers)
+
+	assert.Equal(t, 500, info.RequestsLimit)
+	assert.Equal(t, 400, info.RequestsRemaining)
+	assert.Equal(t, "2025-06-01T12:00:00Z", info.RequestsReset)
+	assert.Equal(t, 500, info.TokensLimit)
+	assert.Equal(t, 400, info.TokensRemaining)
+}
+
+func TestExtractRateLimitInfo_OldTakesPrecedence(t *testing.T) {
+	headers := http.Header{}
+	// Old format (more granular)
+	headers.Set("anthropic-ratelimit-requests-limit", "1000")
+	headers.Set("anthropic-ratelimit-requests-remaining", "900")
+	headers.Set("anthropic-ratelimit-requests-reset", "2025-06-01T12:00:00Z")
+	// New format (should be ignored when old is present)
+	headers.Set("ratelimit-limit", "500")
+	headers.Set("ratelimit-remaining", "400")
+	headers.Set("ratelimit-reset", "2025-06-01T13:00:00Z")
+
+	info := ExtractRateLimitInfo(headers)
+
+	assert.Equal(t, 1000, info.RequestsLimit, "old format should take precedence")
+	assert.Equal(t, 900, info.RequestsRemaining, "old format should take precedence")
+	assert.Equal(t, "2025-06-01T12:00:00Z", info.RequestsReset, "old format should take precedence")
+}
+
+func TestExtractRateLimitInfo_MixedFormats(t *testing.T) {
+	headers := http.Header{}
+	// Old format for some fields
+	headers.Set("anthropic-ratelimit-input-tokens-limit", "100000")
+	headers.Set("anthropic-ratelimit-input-tokens-remaining", "80000")
+	// New format for request-level
+	headers.Set("ratelimit-limit", "500")
+	headers.Set("ratelimit-remaining", "400")
+
+	info := ExtractRateLimitInfo(headers)
+
+	assert.Equal(t, 500, info.RequestsLimit, "should use new format for requests")
+	assert.Equal(t, 400, info.RequestsRemaining, "should use new format for requests")
+	assert.Equal(t, 100000, info.InputTokensLimit, "should use old format for input tokens")
+	assert.Equal(t, 80000, info.InputTokensRemaining, "should use old format for input tokens")
+}
+
+func TestHeaderIntFallback(t *testing.T) {
+	t.Run("primary present", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("primary", "100")
+		headers.Set("fallback", "50")
+		assert.Equal(t, 100, headerIntFallback(headers, "primary", "fallback"))
+	})
+
+	t.Run("only fallback present", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("fallback", "50")
+		assert.Equal(t, 50, headerIntFallback(headers, "primary", "fallback"))
+	})
+
+	t.Run("neither present", func(t *testing.T) {
+		headers := http.Header{}
+		assert.Equal(t, 0, headerIntFallback(headers, "primary", "fallback"))
+	})
+}
+
+func TestHeaderStrFallback(t *testing.T) {
+	t.Run("primary present", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("primary", "value1")
+		headers.Set("fallback", "value2")
+		assert.Equal(t, "value1", headerStrFallback(headers, "primary", "fallback"))
+	})
+
+	t.Run("only fallback present", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("fallback", "value2")
+		assert.Equal(t, "value2", headerStrFallback(headers, "primary", "fallback"))
+	})
+
+	t.Run("neither present", func(t *testing.T) {
+		headers := http.Header{}
+		assert.Equal(t, "", headerStrFallback(headers, "primary", "fallback"))
+	})
+}
+
 // --- ContentBlock.Citations tests ---
 
 func TestContentBlock_Citations_Unmarshal(t *testing.T) {
@@ -558,6 +688,84 @@ func TestContentBlock_Citations_Unmarshal(t *testing.T) {
 	assert.Equal(t, "According to sources...", block.Text)
 	assert.NotNil(t, block.Citations)
 	assert.Contains(t, string(block.Citations), "web")
+}
+
+// --- RedactedThinking tests ---
+
+func TestAnthropicResponse_RedactedThinkingBlocks(t *testing.T) {
+	t.Run("no redacted thinking", func(t *testing.T) {
+		resp := &AnthropicResponse{
+			Content: []ContentBlock{
+				{Type: "thinking", Thinking: "visible"},
+				{Type: "text", Text: "answer"},
+			},
+		}
+		assert.Empty(t, resp.RedactedThinkingBlocks())
+		assert.Equal(t, 0, resp.RedactedThinkingCount())
+	})
+
+	t.Run("has redacted thinking", func(t *testing.T) {
+		resp := &AnthropicResponse{
+			Content: []ContentBlock{
+				{Type: "thinking", Thinking: "visible"},
+				{Type: "redacted_thinking", Data: "base64data1"},
+				{Type: "redacted_thinking", Data: "base64data2"},
+				{Type: "text", Text: "answer"},
+			},
+		}
+		blocks := resp.RedactedThinkingBlocks()
+		require.Len(t, blocks, 2)
+		assert.Equal(t, "base64data1", blocks[0].Data)
+		assert.Equal(t, "base64data2", blocks[1].Data)
+		assert.Equal(t, 2, resp.RedactedThinkingCount())
+	})
+}
+
+func TestContentBlock_Data_Unmarshal(t *testing.T) {
+	data := `{"type":"redacted_thinking","data":"aGVsbG8gd29ybGQ="}`
+	var block ContentBlock
+	err := json.Unmarshal([]byte(data), &block)
+	require.NoError(t, err)
+
+	assert.Equal(t, "redacted_thinking", block.Type)
+	assert.Equal(t, "aGVsbG8gd29ybGQ=", block.Data)
+}
+
+func TestAnthropicResponse_ContentBlockCounts_IncludesRedactedThinking(t *testing.T) {
+	resp := &AnthropicResponse{
+		Content: []ContentBlock{
+			{Type: "thinking"},
+			{Type: "redacted_thinking"},
+			{Type: "redacted_thinking"},
+			{Type: "text"},
+		},
+	}
+	counts := resp.ContentBlockCounts()
+	assert.Equal(t, 1, counts["thinking"])
+	assert.Equal(t, 2, counts["redacted_thinking"])
+	assert.Equal(t, 1, counts["text"])
+}
+
+// --- Container tests ---
+
+func TestAnthropicResponse_Container_Unmarshal(t *testing.T) {
+	data := `{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-6","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5},"container":{"id":"ctr_abc123","expires_at":"2025-06-01T12:00:00Z"}}`
+	var resp AnthropicResponse
+	err := json.Unmarshal([]byte(data), &resp)
+	require.NoError(t, err)
+
+	require.NotNil(t, resp.Container)
+	assert.Equal(t, "ctr_abc123", resp.Container.ID)
+	assert.Equal(t, "2025-06-01T12:00:00Z", resp.Container.ExpiresAt)
+}
+
+func TestAnthropicResponse_Container_Nil(t *testing.T) {
+	data := `{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-6","stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}`
+	var resp AnthropicResponse
+	err := json.Unmarshal([]byte(data), &resp)
+	require.NoError(t, err)
+
+	assert.Nil(t, resp.Container)
 }
 
 // --- Delta.Signature tests ---
