@@ -318,7 +318,9 @@ func TestEmitLogs_WithError(t *testing.T) {
 		eventName, ok := lr.Attributes().Get("event.name")
 		if ok && eventName.Str() == "gen_ai.error" {
 			foundErrorLog = true
-			assert.Contains(t, lr.Body().Str(), "authentication_error")
+			assert.Equal(t, "API error", lr.Body().Str())
+			errType, _ := lr.Attributes().Get("error.type")
+			assert.Equal(t, "authentication_error", errType.Str())
 		}
 	}
 	assert.True(t, foundErrorLog)
@@ -1012,7 +1014,9 @@ func TestEmitLogs_NotableStopReason_Refusal(t *testing.T) {
 		eventName, ok := lr.Attributes().Get("event.name")
 		if ok && eventName.Str() == "anthropic.notable_stop_reason" {
 			foundNotableLog = true
-			assert.Contains(t, lr.Body().Str(), "Safety refusal")
+			assert.Equal(t, "Notable stop reason", lr.Body().Str())
+			msg, _ := lr.Attributes().Get("message")
+			assert.Contains(t, msg.Str(), "Safety refusal")
 			stopReason, _ := lr.Attributes().Get("stop_reason")
 			assert.Equal(t, "refusal", stopReason.Str())
 		}
@@ -1038,7 +1042,9 @@ func TestEmitLogs_NotableStopReason_PauseTurn(t *testing.T) {
 		eventName, ok := lr.Attributes().Get("event.name")
 		if ok && eventName.Str() == "anthropic.notable_stop_reason" {
 			foundNotableLog = true
-			assert.Contains(t, lr.Body().Str(), "Turn paused")
+			assert.Equal(t, "Notable stop reason", lr.Body().Str())
+			msg, _ := lr.Attributes().Get("message")
+			assert.Contains(t, msg.Str(), "Turn paused")
 		}
 	}
 	assert.True(t, foundNotableLog, "should have notable stop reason log for pause_turn")
@@ -1062,7 +1068,9 @@ func TestEmitLogs_NotableStopReason_ContextExceeded(t *testing.T) {
 		eventName, ok := lr.Attributes().Get("event.name")
 		if ok && eventName.Str() == "anthropic.notable_stop_reason" {
 			foundNotableLog = true
-			assert.Contains(t, lr.Body().Str(), "Context window exceeded")
+			assert.Equal(t, "Notable stop reason", lr.Body().Str())
+			msg, _ := lr.Attributes().Get("message")
+			assert.Contains(t, msg.Str(), "Context window exceeded")
 		}
 	}
 	assert.True(t, foundNotableLog, "should have notable stop reason log for context_window_exceeded")

@@ -1046,7 +1046,7 @@ func (tb *telemetryBuilder) addErrorLog(sl plog.ScopeLogs, data *requestData) {
 	lr.SetSeverityNumber(plog.SeverityNumberError)
 	lr.SetSeverityText("ERROR")
 
-	lr.Body().SetStr(fmt.Sprintf("%s: %s", data.errorResponse.Error.Type, data.errorResponse.Error.Message))
+	lr.Body().SetStr("API error")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "gen_ai.error")
@@ -1066,7 +1066,7 @@ func (tb *telemetryBuilder) addRateLimitLog(sl plog.ScopeLogs, resource string, 
 	lr.SetSeverityNumber(plog.SeverityNumberWarn)
 	lr.SetSeverityText("WARN")
 
-	lr.Body().SetStr(fmt.Sprintf("Rate limit warning: %s at %.0f%% utilization", resource, utilization*100))
+	lr.Body().SetStr("Rate limit warning")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.rate_limit_warning")
@@ -1096,7 +1096,7 @@ func (tb *telemetryBuilder) addToolCallLog(sl plog.ScopeLogs, block ContentBlock
 	lr.SetSeverityNumber(plog.SeverityNumberInfo)
 	lr.SetSeverityText("INFO")
 
-	lr.Body().SetStr(fmt.Sprintf("Tool call: %s", block.Name))
+	lr.Body().SetStr("Tool call")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "gen_ai.tool_call")
@@ -1113,11 +1113,7 @@ func (tb *telemetryBuilder) addDetailedToolCallLog(sl plog.ScopeLogs, tc ToolCal
 	lr.SetSeverityNumber(plog.SeverityNumberInfo)
 	lr.SetSeverityText("INFO")
 
-	bodyStr := fmt.Sprintf("Tool call: %s", tc.ToolName)
-	if tc.FilePath != "" {
-		bodyStr += fmt.Sprintf(" on %s", tc.FilePath)
-	}
-	lr.Body().SetStr(bodyStr)
+	lr.Body().SetStr("Tool call detail")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.tool_call")
@@ -1151,7 +1147,7 @@ func (tb *telemetryBuilder) addFileChangeLog(sl plog.ScopeLogs, tc ToolCallInfo,
 	lr.SetSeverityNumber(plog.SeverityNumberInfo)
 	lr.SetSeverityText("INFO")
 
-	lr.Body().SetStr(fmt.Sprintf("File change: %s +%d -%d", tc.FilePath, tc.LinesAdded, tc.LinesRemoved))
+	lr.Body().SetStr("File change")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.file_change")
@@ -1175,9 +1171,7 @@ func (tb *telemetryBuilder) addCostLog(sl plog.ScopeLogs, data *requestData) {
 	lr.SetSeverityNumber(plog.SeverityNumberInfo)
 	lr.SetSeverityText("INFO")
 
-	cacheCost := data.cost.CacheReadCost + data.cost.CacheCreationCost
-	lr.Body().SetStr(fmt.Sprintf("Cost: $%.6f (input: $%.6f, output: $%.6f, cache: $%.6f)",
-		data.cost.TotalCost, data.cost.InputCost, data.cost.OutputCost, cacheCost))
+	lr.Body().SetStr("Cost summary")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.cost")
@@ -1196,13 +1190,12 @@ func (tb *telemetryBuilder) addStreamingSummaryLog(sl plog.ScopeLogs, data *requ
 	lr.SetSeverityNumber(plog.SeverityNumberInfo)
 	lr.SetSeverityText("INFO")
 
+	lr.Body().SetStr("Streaming summary")
+
 	ttftMs := int64(0)
 	if data.streaming.HasFirstToken {
 		ttftMs = data.streaming.TimeToFirstToken.Milliseconds()
 	}
-
-	lr.Body().SetStr(fmt.Sprintf("Streaming complete: %d events, %d chunks, TTFT=%dms",
-		data.streaming.TotalEvents, data.streaming.TotalChunks, ttftMs))
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.streaming.summary")
@@ -1233,10 +1226,11 @@ func (tb *telemetryBuilder) addNotableStopReasonLog(sl plog.ScopeLogs, data *req
 	lr.SetObservedTimestamp(pcommon.NewTimestampFromTime(data.endTime))
 	lr.SetSeverityNumber(plog.SeverityNumberWarn)
 	lr.SetSeverityText("WARN")
-	lr.Body().SetStr(message)
+	lr.Body().SetStr("Notable stop reason")
 
 	attrs := lr.Attributes()
 	attrs.PutStr("event.name", "anthropic.notable_stop_reason")
+	attrs.PutStr("message", message)
 	attrs.PutStr("stop_reason", data.response.StopReason)
 	attrs.PutStr("gen_ai.request.model", data.requestModel())
 	if data.requestID != "" {
