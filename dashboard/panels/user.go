@@ -478,7 +478,7 @@ func UserOutputThroughput() cog.Builder[dashboard.Panel] {
 		Tooltip(multiTooltip()).
 		WithTarget(
 			promRangeQuery(
-				f(`avg(anthropic_throughput_output_tokens_per_second_per_second{%s})`),
+				f(`avg(anthropic_throughput_output_tokens_per_second{%s})`),
 				"Output tok/s",
 			),
 		)

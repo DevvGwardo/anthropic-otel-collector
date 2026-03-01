@@ -185,7 +185,7 @@ func OutputThroughput() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`avg(anthropic_throughput_output_tokens_per_second_per_second{%s})`),
+				f(`avg(anthropic_throughput_output_tokens_per_second{%s})`),
 				"Output Throughput",
 			),
 		)

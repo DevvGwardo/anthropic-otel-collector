@@ -215,7 +215,7 @@ func TestEmitMetrics_Throughput(t *testing.T) {
 		metricNames[allMetrics.At(i).Name()] = true
 	}
 
-	assert.True(t, metricNames["anthropic.throughput.output_tokens_per_second"])
+	assert.True(t, metricNames["anthropic.throughput.output_tokens"])
 }
 
 func TestEmitMetrics_CostMultipliedRequests(t *testing.T) {
@@ -561,6 +561,43 @@ func TestEmitMetrics_WebSearchPricing(t *testing.T) {
 		}
 	}
 	t.Fatal("anthropic.cost.server_tool_use.web_search metric not found")
+}
+
+func TestEmitMetrics_CreditUsage(t *testing.T) {
+	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.rateLimit.CreditUsageUSD = 12.50
+
+	err := tb.emitMetrics(context.Background(), data)
+	require.NoError(t, err)
+
+	metrics := metricsSink.AllMetrics()
+	allMetrics := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+
+	metricNames := make(map[string]bool)
+	for i := 0; i < allMetrics.Len(); i++ {
+		metricNames[allMetrics.At(i).Name()] = true
+	}
+
+	assert.True(t, metricNames["anthropic.cost.credit_usage"], "should emit credit usage gauge")
+	assert.True(t, metricNames["anthropic.cost.credit_usage.total"], "should emit credit usage total")
+}
+
+func TestEmitMetrics_CreditUsage_NotEmittedWhenZero(t *testing.T) {
+	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.rateLimit.CreditUsageUSD = 0
+
+	err := tb.emitMetrics(context.Background(), data)
+	require.NoError(t, err)
+
+	metrics := metricsSink.AllMetrics()
+	allMetrics := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+
+	for i := 0; i < allMetrics.Len(); i++ {
+		assert.NotEqual(t, "anthropic.cost.credit_usage", allMetrics.At(i).Name(), "should not emit credit usage when zero")
+		assert.NotEqual(t, "anthropic.cost.credit_usage.total", allMetrics.At(i).Name(), "should not emit credit usage total when zero")
+	}
 }
 
 func TestEmitMetrics_ErrorsByType(t *testing.T) {

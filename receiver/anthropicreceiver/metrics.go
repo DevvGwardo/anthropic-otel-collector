@@ -265,6 +265,12 @@ func (tb *telemetryBuilder) emitMetrics(ctx context.Context, data *requestData) 
 		tb.addSumDPf(sm, "anthropic.cost.total", "{USD}", start, now, data.cost.TotalCost, commonAttrs())
 	}
 
+	// Credit usage from API header
+	if data.rateLimit.CreditUsageUSD > 0 {
+		tb.addGaugeDP(sm, "anthropic.cost.credit_usage", "{USD}", start, now, data.rateLimit.CreditUsageUSD, commonAttrs())
+		tb.addSumDPf(sm, "anthropic.cost.credit_usage.total", "{USD}", start, now, data.rateLimit.CreditUsageUSD, commonAttrs())
+	}
+
 	// Cache savings metric
 	if data.cost.CacheSavings > 0 {
 		tb.addSumDPf(sm, "anthropic.cost.cache_savings", "{USD}", start, now, data.cost.CacheSavings, commonAttrs())
@@ -361,7 +367,7 @@ func (tb *telemetryBuilder) emitMetrics(ctx context.Context, data *requestData) 
 		}
 		if outputDuration > 0 {
 			tokensPerSec := float64(data.response.Usage.OutputTokens) / outputDuration.Seconds()
-			tb.addGaugeDP(sm, "anthropic.throughput.output_tokens_per_second", "{token}/s", start, now, tokensPerSec, commonAttrs())
+			tb.addGaugeDP(sm, "anthropic.throughput.output_tokens", "{token}/s", start, now, tokensPerSec, commonAttrs())
 		}
 	}
 

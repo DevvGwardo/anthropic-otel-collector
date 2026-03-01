@@ -16,7 +16,7 @@ const (
 	MetricStreamingChunks        = "anthropic_streaming_chunks"
 	MetricStreamingEvents        = "anthropic_streaming_events_total"
 	MetricTimeToFirstToken       = "gen_ai_server_time_to_first_token_seconds"
-	MetricThroughputOutputTokens = "anthropic_throughput_output_tokens_per_second_per_second"
+	MetricThroughputOutputTokens = "anthropic_throughput_output_tokens_per_second"
 )
 
 // AvgStreamingDuration returns a timeseries showing average streaming duration over time.
