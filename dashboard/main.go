@@ -6,32 +6,47 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
 )
+
+type dashboardDef struct {
+	name     string
+	filename string
+	builder  func() (dashboard.Dashboard, error)
+}
 
 func main() {
 	outputDir := flag.String("output-dir", "", "Directory to write dashboard JSON files (stdout if empty)")
 	flag.Parse()
 
-	dash, err := buildDashboard()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to build dashboard: %v\n", err)
-		os.Exit(1)
+	dashboards := []dashboardDef{
+		{"main", "anthropic-claude-code-usage.json", buildDashboard},
+		{"activity", "claude-code-activity.json", buildPublicDashboard},
 	}
 
-	data, err := json.MarshalIndent(dash, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to marshal dashboard: %v\n", err)
-		os.Exit(1)
-	}
+	for _, d := range dashboards {
+		dash, err := d.builder()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to build %s dashboard: %v\n", d.name, err)
+			os.Exit(1)
+		}
 
-	if *outputDir == "" {
-		fmt.Println(string(data))
-		return
-	}
+		data, err := json.MarshalIndent(dash, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to marshal %s dashboard: %v\n", d.name, err)
+			os.Exit(1)
+		}
 
-	path := filepath.Join(*outputDir, "anthropic-claude-code-usage.json")
-	if err := os.WriteFile(path, append(data, '\n'), 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write dashboard: %v\n", err)
-		os.Exit(1)
+		if *outputDir == "" {
+			fmt.Println(string(data))
+			continue
+		}
+
+		path := filepath.Join(*outputDir, d.filename)
+		if err := os.WriteFile(path, append(data, '\n'), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write %s dashboard: %v\n", d.name, err)
+			os.Exit(1)
+		}
 	}
 }
