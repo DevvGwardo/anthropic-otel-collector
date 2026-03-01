@@ -11,7 +11,7 @@ const MetricProjectRequests = "claude_code_project_requests_total"
 const MetricCacheSavings = "anthropic_cost_cache_savings_total"
 
 // MetricOutputUtilization is the Prometheus metric for output token utilization.
-const MetricOutputUtilization = "anthropic_tokens_output_utilization"
+const MetricOutputUtilization = "anthropic_tokens_output_utilization_ratio"
 
 // MetricSessionCacheRead is the Prometheus metric for session-level cache read tokens.
 const MetricSessionCacheRead = "claude_code_session_tokens_cache_read_total"

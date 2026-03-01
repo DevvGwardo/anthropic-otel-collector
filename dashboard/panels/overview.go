@@ -151,7 +151,7 @@ func AvgCostPerRequest() cog.Builder[dashboard.Panel] {
 		Title("Avg Cost / Request").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(6).
+		Span(5).
 		Unit("currencyUSD").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -174,7 +174,7 @@ func OutputThroughput() cog.Builder[dashboard.Panel] {
 		Title("Output Throughput").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(6).
+		Span(5).
 		Unit("suffix: tok/s").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -197,7 +197,7 @@ func RequestsPerMinute() cog.Builder[dashboard.Panel] {
 		Title("Requests / Min").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(6).
+		Span(5).
 		Unit("short").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -220,7 +220,7 @@ func FastModeRequests() cog.Builder[dashboard.Panel] {
 		Title("Fast Mode Requests").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(6).
+		Span(5).
 		Unit("short").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -243,7 +243,7 @@ func CacheSavingsStat() cog.Builder[dashboard.Panel] {
 		Title("Cache Savings").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(6).
+		Span(4).
 		Unit("currencyUSD").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).

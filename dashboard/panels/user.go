@@ -613,7 +613,7 @@ func UserOutputUtilization() cog.Builder[dashboard.Panel] {
 		Tooltip(multiTooltip()).
 		WithTarget(
 			promRangeQuery(
-				f(`avg(anthropic_tokens_output_utilization{%s})`),
+				f(`avg(anthropic_tokens_output_utilization_ratio{%s})`),
 				"Output Utilization",
 			),
 		)
@@ -752,19 +752,19 @@ func UserRateLimitUtilization() cog.Builder[dashboard.Panel] {
 		Tooltip(multiTooltip()).
 		WithTarget(
 			promRangeQuery(
-				f(`avg(anthropic_ratelimit_requests_utilization{%s})`),
+				f(`avg(anthropic_ratelimit_requests_utilization_ratio{%s})`),
 				"Requests",
 			),
 		).
 		WithTarget(
 			promRangeQuery(
-				f(`avg(anthropic_ratelimit_input_tokens_utilization{%s})`),
+				f(`avg(anthropic_ratelimit_input_tokens_utilization_ratio{%s})`),
 				"Input Tokens",
 			),
 		).
 		WithTarget(
 			promRangeQuery(
-				f(`avg(anthropic_ratelimit_output_tokens_utilization{%s})`),
+				f(`avg(anthropic_ratelimit_output_tokens_utilization_ratio{%s})`),
 				"Output Tokens",
 			),
 		)
