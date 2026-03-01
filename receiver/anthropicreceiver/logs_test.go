@@ -400,6 +400,82 @@ func TestEmitLogs_ClaudeCodeContextInOperationLog(t *testing.T) {
 	assert.False(t, ok, "should not have session.id in operation log")
 }
 
+func TestEmitLogs_ContainerInOperationLog(t *testing.T) {
+	tb, _, _, logsSink := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.response.Container = &Container{
+		ID:        "ctr_abc123",
+		ExpiresAt: "2025-06-01T12:00:00Z",
+	}
+
+	err := tb.emitLogs(context.Background(), data)
+	require.NoError(t, err)
+
+	logs := logsSink.AllLogs()
+	require.Len(t, logs, 1)
+
+	firstLog := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	bodyMap := firstLog.Body().Map()
+
+	containerVal, ok := bodyMap.Get("anthropic.container")
+	require.True(t, ok, "should have container in operation log body")
+	containerMap := containerVal.Map()
+
+	id, ok := containerMap.Get("id")
+	require.True(t, ok, "should have container.id")
+	assert.Equal(t, "ctr_abc123", id.Str())
+
+	expiresAt, ok := containerMap.Get("expires_at")
+	require.True(t, ok, "should have container.expires_at")
+	assert.Equal(t, "2025-06-01T12:00:00Z", expiresAt.Str())
+}
+
+func TestEmitLogs_CreditUsageInOperationLog(t *testing.T) {
+	tb, _, _, logsSink := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.rateLimit.CreditUsageUSD = 12.50
+
+	err := tb.emitLogs(context.Background(), data)
+	require.NoError(t, err)
+
+	logs := logsSink.AllLogs()
+	require.Len(t, logs, 1)
+
+	firstLog := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	bodyMap := firstLog.Body().Map()
+
+	val, ok := bodyMap.Get("anthropic.cost.credit_usage_usd")
+	require.True(t, ok, "should have credit_usage_usd in operation log")
+	assert.InDelta(t, 12.50, val.Double(), 0.001)
+}
+
+func TestEmitLogs_CreditUsageInCostLog(t *testing.T) {
+	tb, _, _, logsSink := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.rateLimit.CreditUsageUSD = 12.50
+
+	err := tb.emitLogs(context.Background(), data)
+	require.NoError(t, err)
+
+	logs := logsSink.AllLogs()
+	require.Len(t, logs, 1)
+
+	logRecords := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	var found bool
+	for i := 0; i < logRecords.Len(); i++ {
+		lr := logRecords.At(i)
+		eventName, ok := lr.Attributes().Get("event.name")
+		if ok && eventName.Str() == "anthropic.cost" {
+			val, ok := lr.Attributes().Get("cost.credit_usage_usd")
+			if ok {
+				found = true
+				assert.InDelta(t, 12.50, val.Double(), 0.001)
+			}
+		}
+	}
+	assert.True(t, found, "should have credit_usage_usd in cost log")
+}
+
 func TestEmitLogs_OperationLog_NewFields(t *testing.T) {
 	tb, _, _, logsSink := newTestTelemetryBuilder(t)
 	data := newTestRequestData()

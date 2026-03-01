@@ -140,6 +140,12 @@ func (tb *telemetryBuilder) setSpanAttributes(attrs pcommon.Map, data *requestDa
 		attrs.PutInt("anthropic.response.thinking_length", int64(data.response.ThinkingLength()))
 	}
 
+	// Container metadata
+	if data.response != nil && data.response.Container != nil {
+		attrs.PutStr("anthropic.container.id", data.response.Container.ID)
+		attrs.PutStr("anthropic.container.expires_at", data.response.Container.ExpiresAt)
+	}
+
 	attrs.PutInt("http.response.status_code", int64(data.statusCode))
 	if data.statusCode >= 400 {
 		if data.errorResponse != nil {
@@ -222,6 +228,11 @@ func (tb *telemetryBuilder) setSpanAttributes(attrs pcommon.Map, data *requestDa
 		attrs.PutStr("anthropic.organization_id", data.organizationID)
 	}
 
+	// Credit usage from API
+	if data.rateLimit.CreditUsageUSD > 0 {
+		attrs.PutDouble("anthropic.cost.credit_usage_usd", data.rateLimit.CreditUsageUSD)
+	}
+
 	// Cost multiplier
 	if data.cost.Multiplier != "" && data.cost.Multiplier != "standard" {
 		attrs.PutStr("anthropic.cost.multiplier", data.cost.Multiplier)
@@ -287,6 +298,8 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 				blockEvent.Attributes().PutStr("tool_name", block.Name)
 			case "thinking":
 				blockEvent.Attributes().PutInt("thinking_length", int64(len(block.Thinking)))
+			case "redacted_thinking":
+				blockEvent.Attributes().PutInt("data_length", int64(len(block.Data)))
 			case "server_tool_use":
 				blockEvent.Attributes().PutStr("tool_name", block.Name)
 			case "web_search_tool_result", "code_execution_tool_result":
@@ -309,6 +322,14 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 			thinkEvent.SetName("gen_ai.thinking")
 			thinkEvent.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
 			thinkEvent.Attributes().PutInt("thinking_length", int64(len(block.Thinking)))
+		}
+
+		// Redacted thinking events
+		for _, block := range data.response.RedactedThinkingBlocks() {
+			rtEvent := span.Events().AppendEmpty()
+			rtEvent.SetName("gen_ai.redacted_thinking")
+			rtEvent.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
+			rtEvent.Attributes().PutInt("data_length", int64(len(block.Data)))
 		}
 	}
 

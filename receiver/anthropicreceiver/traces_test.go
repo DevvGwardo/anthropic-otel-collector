@@ -483,6 +483,121 @@ func TestEmitTraces_NoClaudeCodeAttributes(t *testing.T) {
 	assert.False(t, ok, "should not have claude_code attributes when no claudeCode")
 }
 
+func TestEmitTraces_RedactedThinkingEvents(t *testing.T) {
+	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.response.Content = []ContentBlock{
+		{Type: "thinking", Thinking: "visible thought"},
+		{Type: "redacted_thinking", Data: "base64data"},
+		{Type: "text", Text: "answer"},
+	}
+
+	err := tb.emitTraces(context.Background(), data)
+	require.NoError(t, err)
+
+	traces := tracesSink.AllTraces()
+	require.Len(t, traces, 1)
+
+	rootSpan := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
+	events := rootSpan.Events()
+
+	var foundRedactedThinkingContentBlock, foundRedactedThinkingEvent bool
+	for i := 0; i < events.Len(); i++ {
+		ev := events.At(i)
+		switch ev.Name() {
+		case "gen_ai.content_block":
+			blockType, ok := ev.Attributes().Get("type")
+			if ok && blockType.Str() == "redacted_thinking" {
+				foundRedactedThinkingContentBlock = true
+				dataLen, ok := ev.Attributes().Get("data_length")
+				assert.True(t, ok, "should have data_length attribute")
+				assert.Equal(t, int64(len("base64data")), dataLen.Int())
+			}
+		case "gen_ai.redacted_thinking":
+			foundRedactedThinkingEvent = true
+			dataLen, ok := ev.Attributes().Get("data_length")
+			assert.True(t, ok)
+			assert.Equal(t, int64(len("base64data")), dataLen.Int())
+		}
+	}
+	assert.True(t, foundRedactedThinkingContentBlock, "should have redacted_thinking content block event")
+	assert.True(t, foundRedactedThinkingEvent, "should have gen_ai.redacted_thinking event")
+}
+
+func TestEmitTraces_ContainerAttributes(t *testing.T) {
+	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.response.Container = &Container{
+		ID:        "ctr_abc123",
+		ExpiresAt: "2025-06-01T12:00:00Z",
+	}
+
+	err := tb.emitTraces(context.Background(), data)
+	require.NoError(t, err)
+
+	traces := tracesSink.AllTraces()
+	require.Len(t, traces, 1)
+
+	attrs := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+
+	val, ok := attrs.Get("anthropic.container.id")
+	require.True(t, ok, "should have container.id")
+	assert.Equal(t, "ctr_abc123", val.Str())
+
+	val, ok = attrs.Get("anthropic.container.expires_at")
+	require.True(t, ok, "should have container.expires_at")
+	assert.Equal(t, "2025-06-01T12:00:00Z", val.Str())
+}
+
+func TestEmitTraces_NoContainerAttributes(t *testing.T) {
+	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	// No container set
+
+	err := tb.emitTraces(context.Background(), data)
+	require.NoError(t, err)
+
+	traces := tracesSink.AllTraces()
+	require.Len(t, traces, 1)
+
+	attrs := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	_, ok := attrs.Get("anthropic.container.id")
+	assert.False(t, ok, "should not have container.id without container")
+}
+
+func TestEmitTraces_CreditUsageAttribute(t *testing.T) {
+	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	data.rateLimit.CreditUsageUSD = 12.50
+
+	err := tb.emitTraces(context.Background(), data)
+	require.NoError(t, err)
+
+	traces := tracesSink.AllTraces()
+	require.Len(t, traces, 1)
+
+	attrs := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	val, ok := attrs.Get("anthropic.cost.credit_usage_usd")
+	require.True(t, ok, "should have credit_usage_usd attribute")
+	assert.InDelta(t, 12.50, val.Double(), 0.001)
+}
+
+func TestEmitTraces_CreditUsageAttribute_NotSetWhenZero(t *testing.T) {
+	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	data := newTestRequestData()
+	// CreditUsageUSD defaults to 0
+
+	err := tb.emitTraces(context.Background(), data)
+	require.NoError(t, err)
+
+	traces := tracesSink.AllTraces()
+	require.Len(t, traces, 1)
+
+	attrs := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	_, ok := attrs.Get("anthropic.cost.credit_usage_usd")
+	assert.False(t, ok, "should not have credit_usage_usd when zero")
+}
+
 func TestEmitTraces_ServerPortIsInt(t *testing.T) {
 	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()

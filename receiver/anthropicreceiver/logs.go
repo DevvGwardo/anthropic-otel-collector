@@ -143,6 +143,12 @@ func (tb *telemetryBuilder) addOperationLog(sl plog.ScopeLogs, data *requestData
 		body.PutInt("anthropic.response.text_length", int64(len(data.response.TextContent())))
 		body.PutInt("anthropic.response.thinking_length", int64(data.response.ThinkingLength()))
 
+		if data.response.Container != nil {
+			containerMap := body.PutEmptyMap("anthropic.container")
+			containerMap.PutStr("id", data.response.Container.ID)
+			containerMap.PutStr("expires_at", data.response.Container.ExpiresAt)
+		}
+
 		if usage.ServerToolUse != nil {
 			stuMap := body.PutEmptyMap("anthropic.usage.server_tool_use")
 			stuMap.PutInt("web_search_requests", int64(usage.ServerToolUse.WebSearchRequests))
@@ -165,6 +171,9 @@ func (tb *telemetryBuilder) addOperationLog(sl plog.ScopeLogs, data *requestData
 	}
 	if data.cost.Multiplier != "" && data.cost.Multiplier != "standard" {
 		body.PutStr("anthropic.cost.multiplier", data.cost.Multiplier)
+	}
+	if data.rateLimit.CreditUsageUSD > 0 {
+		body.PutDouble("anthropic.cost.credit_usage_usd", data.rateLimit.CreditUsageUSD)
 	}
 
 	// Claude Code context
@@ -357,6 +366,9 @@ func (tb *telemetryBuilder) addCostLog(sl plog.ScopeLogs, data *requestData) {
 	attrs.PutDouble("cost.output_tokens", data.cost.OutputCost)
 	attrs.PutDouble("cost.cache_read", data.cost.CacheReadCost)
 	attrs.PutDouble("cost.cache_creation", data.cost.CacheCreationCost)
+	if data.rateLimit.CreditUsageUSD > 0 {
+		attrs.PutDouble("cost.credit_usage_usd", data.rateLimit.CreditUsageUSD)
+	}
 	attrs.PutStr("gen_ai.request.model", data.requestModel())
 }
 
