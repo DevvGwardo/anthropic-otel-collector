@@ -18,16 +18,10 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		Timezone("browser").
 		Tooltip(dashboard.DashboardCursorSyncCrosshair).
 		Variables(buildVariables()).
-		// Row 0: Sessions & Projects
-		WithRow(dashboard.NewRowBuilder("Sessions & Projects")).
-		WithPanel(panels.ActiveSessions()).
-		WithPanel(panels.SessionCostBreakdown()).
+		// Row 0: Projects
+		WithRow(dashboard.NewRowBuilder("Projects")).
 		WithPanel(panels.ProjectCostBreakdown()).
-		WithPanel(panels.SessionRequestsOverTime()).
-		WithPanel(panels.SessionActiveDuration()).
 		WithPanel(panels.ProjectRequestsOverTime()).
-		WithPanel(panels.SessionToolCalls()).
-		WithPanel(panels.SessionLinesChanged()).
 		// Row 1: Overview
 		WithRow(dashboard.NewRowBuilder("Overview")).
 		WithPanel(panels.TotalCost()).

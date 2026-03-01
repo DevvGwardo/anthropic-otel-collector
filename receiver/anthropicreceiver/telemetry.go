@@ -111,8 +111,8 @@ type requestData struct {
 	speed          string
 	apiVersion     string
 
-	// Session context (Claude Code only)
-	session *SessionContext
+	// Claude Code context (only set for Claude Code requests)
+	claudeCode *ClaudeCodeContext
 }
 
 func (tb *telemetryBuilder) emit(ctx context.Context, data *requestData) {

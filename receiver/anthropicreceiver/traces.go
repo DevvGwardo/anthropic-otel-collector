@@ -227,19 +227,17 @@ func (tb *telemetryBuilder) setSpanAttributes(attrs pcommon.Map, data *requestDa
 		attrs.PutStr("anthropic.cost.multiplier", data.cost.Multiplier)
 	}
 
-	// Claude Code session context
-	if data.session != nil {
+	// Claude Code context
+	if data.claudeCode != nil {
 		attrs.PutBool("claude_code.is_claude_code", true)
-		attrs.PutStr("claude_code.session.id", data.session.SessionID)
-		attrs.PutInt("claude_code.session.request_number", int64(data.session.RequestNumber))
-		if data.session.ProjectPath != "" {
-			attrs.PutStr("claude_code.project.path", data.session.ProjectPath)
+		if data.claudeCode.WorkingDir != "" {
+			attrs.PutStr("claude_code.project.path", data.claudeCode.WorkingDir)
 		}
-		if data.session.ProjectName != "" {
-			attrs.PutStr("claude_code.project.name", data.session.ProjectName)
+		if data.claudeCode.ProjectName != "" {
+			attrs.PutStr("claude_code.project.name", data.claudeCode.ProjectName)
 		}
-		if data.session.UserID != "" {
-			attrs.PutStr("claude_code.user_id", data.session.UserID)
+		if data.claudeCode.UserID != "" {
+			attrs.PutStr("claude_code.user_id", data.claudeCode.UserID)
 		}
 	}
 

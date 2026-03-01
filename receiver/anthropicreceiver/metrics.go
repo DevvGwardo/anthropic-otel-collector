@@ -95,8 +95,8 @@ func (tb *telemetryBuilder) emitMetrics(ctx context.Context, data *requestData) 
 		m.PutStr("server.address", tb.serverHost)
 		m.PutInt("server.port", int64(tb.serverPort))
 		m.PutStr("http.request.method", "POST")
-		if data.session != nil && data.session.ProjectName != "" {
-			m.PutStr("claude_code.project.name", data.session.ProjectName)
+		if data.claudeCode != nil && data.claudeCode.ProjectName != "" {
+			m.PutStr("claude_code.project.name", data.claudeCode.ProjectName)
 		}
 		return m
 	}
@@ -333,8 +333,7 @@ func (tb *telemetryBuilder) emitMetrics(ctx context.Context, data *requestData) 
 		stu := data.response.Usage.ServerToolUse
 		if stu.WebSearchRequests > 0 {
 			tb.addSumDP(sm, "anthropic.server_tool_use.web_search_requests", "{request}", start, now, int64(stu.WebSearchRequests), commonAttrs())
-			// Web search cost: $10 per 1000 searches
-			searchCost := float64(stu.WebSearchRequests) * 10.0 / 1000.0
+			searchCost := float64(stu.WebSearchRequests) * tb.cfg.WebSearchPricePer1000 / 1000.0
 			tb.addSumDPf(sm, "anthropic.cost.server_tool_use.web_search", "{USD}", start, now, searchCost, commonAttrs())
 		}
 		if stu.WebFetchRequests > 0 {
@@ -376,77 +375,23 @@ func (tb *telemetryBuilder) emitMetrics(ctx context.Context, data *requestData) 
 		tb.addSumDP(sm, "anthropic.cost.multiplied_requests", "{request}", start, now, 1, multAttrs)
 	}
 
-	// Claude Code session and project metrics
-	if data.session != nil {
-		sessionAttrs := func() pcommon.Map {
-			m := pcommon.NewMap()
-			m.PutStr("claude_code.session.id", data.session.SessionID)
-			if data.session.ProjectName != "" {
-				m.PutStr("claude_code.project.name", data.session.ProjectName)
-			}
-			return m
-		}
+	// Claude Code project metrics
+	if data.claudeCode != nil && data.claudeCode.ProjectName != "" {
+		projectAttrs := pcommon.NewMap()
+		projectAttrs.PutStr("claude_code.project.name", data.claudeCode.ProjectName)
 
-		tb.addSumDP(sm, "claude_code.session.requests", "{request}", start, now, 1, sessionAttrs())
-		tb.addSumDPf(sm, "claude_code.session.active_duration", "s", start, now, duration, sessionAttrs())
-		tb.addSumDPf(sm, "claude_code.session.cost", "{USD}", start, now, data.cost.TotalCost, sessionAttrs())
+		tb.addSumDP(sm, "claude_code.project.requests", "{request}", start, now, 1, projectAttrs)
+		tb.addSumDPf(sm, "claude_code.project.cost", "{USD}", start, now, data.cost.TotalCost, projectAttrs)
 
+		// Project token metrics
 		if data.response != nil {
-			tb.addSumDP(sm, "claude_code.session.tokens.input", "{token}", start, now, int64(data.response.Usage.TotalInputTokens()), sessionAttrs())
-			tb.addSumDP(sm, "claude_code.session.tokens.output", "{token}", start, now, int64(data.response.Usage.OutputTokens), sessionAttrs())
-			tb.addSumDP(sm, "claude_code.session.tokens.cache_read", "{token}", start, now, int64(data.response.Usage.CacheReadInputTokens), sessionAttrs())
+			tb.addSumDP(sm, "claude_code.project.tokens.input", "{token}", start, now, int64(data.response.Usage.TotalInputTokens()), projectAttrs)
+			tb.addSumDP(sm, "claude_code.project.tokens.output", "{token}", start, now, int64(data.response.Usage.OutputTokens), projectAttrs)
 		}
 
-		// Session conversation turns: count assistant messages in the request
-		if data.request != nil {
-			convTurns := 0
-			for _, msg := range data.request.Messages {
-				if msg.Role == "assistant" {
-					convTurns++
-				}
-			}
-			if convTurns > 0 {
-				tb.addSumDP(sm, "claude_code.session.conversation_turns", "{turn}", start, now, int64(convTurns), sessionAttrs())
-			}
-		}
-
-		// Session tool calls
-		if len(data.toolCalls) > 0 {
-			tb.addSumDP(sm, "claude_code.session.tool_calls", "{call}", start, now, int64(len(data.toolCalls)), sessionAttrs())
-		}
-
-		// Session lines changed: sum of LinesAdded + LinesRemoved across tool calls
-		var totalLinesChanged int64
-		for _, tc := range data.toolCalls {
-			totalLinesChanged += int64(tc.LinesAdded + tc.LinesRemoved)
-		}
-		if totalLinesChanged > 0 {
-			tb.addSumDP(sm, "claude_code.session.lines_changed", "{line}", start, now, totalLinesChanged, sessionAttrs())
-		}
-
-		// Session errors
+		// Project errors
 		if data.statusCode >= 400 {
-			tb.addSumDP(sm, "claude_code.session.errors", "{error}", start, now, 1, sessionAttrs())
-		}
-
-		// Project-level metrics (without session.id to avoid cardinality explosion)
-		if data.session.ProjectName != "" {
-			projectAttrs := pcommon.NewMap()
-			projectAttrs.PutStr("claude_code.project.name", data.session.ProjectName)
-
-			tb.addSumDP(sm, "claude_code.project.requests", "{request}", start, now, 1, projectAttrs)
-			tb.addSumDPf(sm, "claude_code.project.cost", "{USD}", start, now, data.cost.TotalCost, projectAttrs)
-
-			// Project token metrics
-			if data.response != nil {
-				tb.addSumDP(sm, "claude_code.project.tokens.input", "{token}", start, now, int64(data.response.Usage.TotalInputTokens()), projectAttrs)
-				tb.addSumDP(sm, "claude_code.project.tokens.output", "{token}", start, now, int64(data.response.Usage.OutputTokens), projectAttrs)
-			}
-
-			// Project errors
-			if data.statusCode >= 400 {
-				tb.addSumDP(sm, "claude_code.project.errors", "{error}", start, now, 1, projectAttrs)
-			}
+			tb.addSumDP(sm, "claude_code.project.errors", "{error}", start, now, 1, projectAttrs)
 		}
 	}
 

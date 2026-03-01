@@ -425,16 +425,14 @@ func TestEmitTraces_ApiVersionAttribute(t *testing.T) {
 	assert.Equal(t, "2024-01-01", val.Str())
 }
 
-func TestEmitTraces_SessionAttributes(t *testing.T) {
+func TestEmitTraces_ClaudeCodeAttributes(t *testing.T) {
 	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:     "ses_abc123",
-		ProjectPath:   "/home/user/my-project",
-		ProjectName:   "my-project",
-		UserID:        "user-xyz",
-		RequestNumber: 3,
-		IsNewSession:  false,
+	data.claudeCode = &ClaudeCodeContext{
+		IsClaudeCode: true,
+		WorkingDir:   "/home/user/my-project",
+		ProjectName:  "my-project",
+		UserID:       "user-xyz",
 	}
 
 	err := tb.emitTraces(context.Background(), data)
@@ -449,10 +447,6 @@ func TestEmitTraces_SessionAttributes(t *testing.T) {
 	require.True(t, ok, "should have claude_code.is_claude_code")
 	assert.True(t, val.Bool())
 
-	val, ok = attrs.Get("claude_code.session.id")
-	require.True(t, ok, "should have session.id")
-	assert.Equal(t, "ses_abc123", val.Str())
-
 	val, ok = attrs.Get("claude_code.project.path")
 	require.True(t, ok, "should have project.path")
 	assert.Equal(t, "/home/user/my-project", val.Str())
@@ -465,15 +459,17 @@ func TestEmitTraces_SessionAttributes(t *testing.T) {
 	require.True(t, ok, "should have user_id")
 	assert.Equal(t, "user-xyz", val.Str())
 
-	val, ok = attrs.Get("claude_code.session.request_number")
-	require.True(t, ok, "should have request_number")
-	assert.Equal(t, int64(3), val.Int())
+	_, ok = attrs.Get("claude_code.session.id")
+	assert.False(t, ok, "should not have session.id")
+
+	_, ok = attrs.Get("claude_code.session.request_number")
+	assert.False(t, ok, "should not have request_number")
 }
 
-func TestEmitTraces_NoSessionAttributes(t *testing.T) {
+func TestEmitTraces_NoClaudeCodeAttributes(t *testing.T) {
 	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	// No session set
+	// No claudeCode set
 
 	err := tb.emitTraces(context.Background(), data)
 	require.NoError(t, err)
@@ -484,10 +480,7 @@ func TestEmitTraces_NoSessionAttributes(t *testing.T) {
 	attrs := traces[0].ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
 
 	_, ok := attrs.Get("claude_code.is_claude_code")
-	assert.False(t, ok, "should not have claude_code attributes when no session")
-
-	_, ok = attrs.Get("claude_code.session.id")
-	assert.False(t, ok, "should not have session.id when no session")
+	assert.False(t, ok, "should not have claude_code attributes when no claudeCode")
 }
 
 func TestEmitTraces_ServerPortIsInt(t *testing.T) {

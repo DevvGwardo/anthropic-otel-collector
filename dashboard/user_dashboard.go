@@ -19,9 +19,7 @@ func buildUserDashboard() (dashboard.Dashboard, error) {
 		// Row 1: Usage Overview
 		WithRow(dashboard.NewRowBuilder("Usage Overview")).
 		WithPanel(panels.UserTotalCost()).
-		WithPanel(panels.UserActiveSessions()).
 		WithPanel(panels.UserTotalRequests()).
-		WithPanel(panels.UserAvgCostPerSession()).
 		WithPanel(panels.UserCacheSavings()).
 		WithPanel(panels.UserTotalTokens()).
 		WithPanel(panels.UserErrorRate()).
@@ -33,21 +31,13 @@ func buildUserDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.UserCostByModel()).
 		WithPanel(panels.UserCacheSavingsOverTime()).
 		WithPanel(panels.UserCumulativeCostByProject()).
-		// Row 3: Session Activity
-		WithRow(dashboard.NewRowBuilder("Session Activity")).
-		WithPanel(panels.UserSessionsOverTime()).
-		WithPanel(panels.UserConversationDepthOverTime()).
-		WithPanel(panels.UserSessionDuration()).
-		WithPanel(panels.UserSessionCostDistribution()).
-		WithPanel(panels.UserAvgRequestsPerSession()).
-		// Row 4: Productivity
+		// Row 3: Productivity
 		WithRow(dashboard.NewRowBuilder("Productivity")).
 		WithPanel(panels.UserToolCallDistribution()).
 		WithPanel(panels.UserLinesChangedOverTime()).
 		WithPanel(panels.UserFileOperations()).
 		WithPanel(panels.UserFilesTouched()).
-		WithPanel(panels.UserToolCallsBySession()).
-		// Row 5: Efficiency & Performance
+		// Row 4: Efficiency & Performance
 		WithRow(dashboard.NewRowBuilder("Efficiency & Performance")).
 		WithPanel(panels.UserCacheHitRatio()).
 		WithPanel(panels.UserOutputUtilization()).
@@ -55,7 +45,7 @@ func buildUserDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.UserOutputThroughput()).
 		WithPanel(panels.UserInputVsOutput()).
 		WithPanel(panels.UserCostPerOutputToken()).
-		// Row 6: Errors & Rate Limits
+		// Row 5: Errors & Rate Limits
 		WithRow(dashboard.NewRowBuilder("Errors & Rate Limits")).
 		WithPanel(panels.UserErrorRateOverTime()).
 		WithPanel(panels.UserErrorsByType()).

@@ -2,7 +2,6 @@ package anthropicreceiver
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,17 +130,17 @@ func TestConfig_Validate(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("negative session_timeout", func(t *testing.T) {
+	t.Run("negative web_search_price_per_1000", func(t *testing.T) {
 		cfg := defaultConfig()
-		cfg.SessionTimeout = -1 * time.Second
+		cfg.WebSearchPricePer1000 = -1
 		err := cfg.Validate()
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "session_timeout must be non-negative")
+		assert.Contains(t, err.Error(), "web_search_price_per_1000 must be non-negative")
 	})
 
-	t.Run("zero session_timeout is valid", func(t *testing.T) {
+	t.Run("zero web_search_price_per_1000 is valid", func(t *testing.T) {
 		cfg := defaultConfig()
-		cfg.SessionTimeout = 0
+		cfg.WebSearchPricePer1000 = 0
 		err := cfg.Validate()
 		require.NoError(t, err)
 	})
@@ -160,7 +159,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, 0.8, cfg.RateLimitWarningThreshold)
 	assert.True(t, cfg.ParseToolCalls)
 	assert.False(t, cfg.IncludeFilePathLabel)
-	assert.Equal(t, 30*time.Minute, cfg.SessionTimeout)
+	assert.Equal(t, 10.0, cfg.WebSearchPricePer1000)
 	assert.NotEmpty(t, cfg.Pricing)
 
 	// Verify at least one known model is in pricing

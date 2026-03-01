@@ -3,7 +3,6 @@ package anthropicreceiver
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -44,8 +43,8 @@ type Config struct {
 	// Pricing is the per-model pricing table.
 	Pricing map[string]ModelPricing `mapstructure:"pricing"`
 
-	// SessionTimeout is the duration after which an inactive session is considered expired.
-	SessionTimeout time.Duration `mapstructure:"session_timeout"`
+	// WebSearchPricePer1000 is the cost in USD per 1000 web search requests.
+	WebSearchPricePer1000 float64 `mapstructure:"web_search_price_per_1000"`
 }
 
 // ModelPricing defines per-token pricing for a model.
@@ -70,8 +69,8 @@ func (cfg *Config) Validate() error {
 	if cfg.RateLimitWarningThreshold < 0 || cfg.RateLimitWarningThreshold > 1 {
 		return fmt.Errorf("rate_limit_warning_threshold must be between 0 and 1, got %f", cfg.RateLimitWarningThreshold)
 	}
-	if cfg.SessionTimeout < 0 {
-		return fmt.Errorf("session_timeout must be non-negative, got %s", cfg.SessionTimeout)
+	if cfg.WebSearchPricePer1000 < 0 {
+		return fmt.Errorf("web_search_price_per_1000 must be non-negative, got %f", cfg.WebSearchPricePer1000)
 	}
 	for model, pricing := range cfg.Pricing {
 		if pricing.InputPerMToken < 0 || pricing.OutputPerMToken < 0 ||
@@ -99,8 +98,8 @@ func defaultConfig() *Config {
 		RateLimitWarningThreshold: 0.8,
 		ParseToolCalls:            true,
 		IncludeFilePathLabel:      false,
-		Pricing:                   defaultPricing(),
-		SessionTimeout:            30 * time.Minute,
+		Pricing:               defaultPricing(),
+		WebSearchPricePer1000: 10.0,
 	}
 }
 

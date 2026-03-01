@@ -13,21 +13,6 @@ const MetricCacheSavings = "anthropic_cost_cache_savings_total"
 // MetricOutputUtilization is the Prometheus metric for output token utilization.
 const MetricOutputUtilization = "anthropic_tokens_output_utilization_ratio"
 
-// MetricSessionCacheRead is the Prometheus metric for session-level cache read tokens.
-const MetricSessionCacheRead = "claude_code_session_tokens_cache_read_total"
-
-// MetricSessionConvTurns is the Prometheus metric for session conversation turns.
-const MetricSessionConvTurns = "claude_code_session_conversation_turns_total"
-
-// MetricSessionToolCalls is the Prometheus metric for session tool calls.
-const MetricSessionToolCalls = "claude_code_session_tool_calls_total"
-
-// MetricSessionLinesChanged is the Prometheus metric for session lines changed.
-const MetricSessionLinesChanged = "claude_code_session_lines_changed_total"
-
-// MetricSessionErrors is the Prometheus metric for session errors.
-const MetricSessionErrors = "claude_code_session_errors_total"
-
 // MetricProjectTokensInput is the Prometheus metric for project input tokens.
 const MetricProjectTokensInput = "claude_code_project_tokens_input_total"
 

@@ -23,7 +23,7 @@ Point your Anthropic SDK at the collector instead of `https://api.anthropic.com`
 
 The collector intercepts all traffic between your application and the Anthropic API. It parses requests and responses (including SSE streams), extracts telemetry, and forwards everything to your observability backend via OTLP. The proxy is fully transparent — your application receives the original API response unmodified.
 
-When used with Claude Code, the collector automatically tracks **sessions** and **projects** — grouping related API calls by working directory and detecting session boundaries via timeouts and conversation resets. This gives you cost, token, and request metrics broken down by session and project with zero configuration.
+When used with Claude Code, the collector automatically detects requests and extracts **project** context — grouping related API calls by working directory. This gives you cost, token, and request metrics broken down by project with zero configuration.
 
 ## Quick Start
 
@@ -105,10 +105,8 @@ receivers:
     # Include full file paths as metric labels (disabled by default, high cardinality)
     include_file_path_label: false
 
-    # Session timeout for Claude Code session tracking (default: 30m)
-    # Sessions are identified by (API key, project path). A new session starts
-    # when the timeout elapses or a conversation reset is detected.
-    session_timeout: 30m
+    # Cost per 1000 web search requests in USD (default: 10.0)
+    web_search_price_per_1000: 10.0
 
     # Per-model pricing for cost calculation (USD per million tokens)
     # Defaults are included for current Claude models. Override or extend as needed:
@@ -233,16 +231,14 @@ Every API call produces a trace with two spans:
 | `anthropic.organization_id`                               | Organization ID from response headers                         |
 | `anthropic.cost.multiplier`                               | Cost multiplier applied (fast/long_context/fast+long_context) |
 
-**Claude Code session attributes** (only for Claude Code requests):
+**Claude Code attributes** (only for Claude Code requests):
 
-| Attribute                            | Description                                    |
-| ------------------------------------ | ---------------------------------------------- |
-| `claude_code.is_claude_code`         | Always `true` for Claude Code requests         |
-| `claude_code.session.id`            | Unique session identifier                       |
-| `claude_code.session.request_number` | 1-based request sequence within the session    |
-| `claude_code.project.path`          | Working directory path                          |
-| `claude_code.project.name`          | Project directory name (base of path)           |
-| `claude_code.user_id`              | User identifier from request metadata (if set)  |
+| Attribute                    | Description                                   |
+| ---------------------------- | --------------------------------------------- |
+| `claude_code.is_claude_code` | Always `true` for Claude Code requests        |
+| `claude_code.project.path`   | Working directory path                        |
+| `claude_code.project.name`   | Project directory name (base of path)         |
+| `claude_code.user_id`        | User identifier from request metadata (if set)|
 
 **Streaming attributes** (only for streaming requests):
 
@@ -377,7 +373,7 @@ All metrics share these common attributes: `gen_ai.operation.name`, `gen_ai.prov
 | `anthropic.cost.cache_read`                 | Sum       | USD     | Cumulative cache read cost                                         |
 | `anthropic.cost.cache_creation`             | Sum       | USD     | Cumulative cache creation cost                                     |
 | `anthropic.cost.total`                      | Sum       | USD     | Cumulative total cost                                              |
-| `anthropic.cost.server_tool_use.web_search` | Sum       | USD     | Cumulative web search cost ($10/1000 searches)                     |
+| `anthropic.cost.server_tool_use.web_search` | Sum       | USD     | Cumulative web search cost (configurable per 1000 searches)        |
 | `anthropic.cost.multiplied_requests`        | Sum       | request | Requests with non-standard cost multiplier (by `multiplier` label) |
 
 #### Server Tool Use
@@ -416,25 +412,22 @@ These metrics are emitted when `parse_tool_calls` is enabled (default) and the m
 | `anthropic.tool_use.files_touched` | Sum       | file      | Unique files touched (edit/write/read)            |
 | `anthropic.tool_use.file_type`     | Sum       | operation | Operations by `file.extension` and operation type |
 
-#### Claude Code Sessions
+#### Claude Code Projects
 
-These metrics are emitted only for Claude Code requests. Session metrics include `claude_code.session.id` and `claude_code.project.name` labels. Project metrics include only `claude_code.project.name` to avoid cardinality explosion.
+These metrics are emitted only for Claude Code requests with a detected project. They include `claude_code.project.name` as a label.
 
-| Metric                                  | Type | Unit    | Description                                |
-| --------------------------------------- | ---- | ------- | ------------------------------------------ |
-| `claude_code.session.requests`          | Sum  | request | Request count per session                  |
-| `claude_code.session.active_duration`   | Sum  | s       | Cumulative request duration per session    |
-| `claude_code.session.cost`              | Sum  | USD     | Cumulative cost per session                |
-| `claude_code.session.tokens.input`      | Sum  | token   | Cumulative input tokens per session        |
-| `claude_code.session.tokens.output`     | Sum  | token   | Cumulative output tokens per session       |
-| `claude_code.project.requests`          | Sum  | request | Request count per project                  |
-| `claude_code.project.cost`             | Sum  | USD     | Cumulative cost per project                |
+| Metric                              | Type | Unit    | Description                   |
+| ----------------------------------- | ---- | ------- | ----------------------------- |
+| `claude_code.project.requests`      | Sum  | request | Request count per project     |
+| `claude_code.project.cost`          | Sum  | USD     | Cumulative cost per project   |
+| `claude_code.project.tokens.input`  | Sum  | token   | Cumulative input per project  |
+| `claude_code.project.tokens.output` | Sum  | token   | Cumulative output per project |
+| `claude_code.project.errors`        | Sum  | error   | Error count per project       |
 
 ### Logs
 
 | Log                 | Severity   | Description                                                |
 | ------------------- | ---------- | ---------------------------------------------------------- |
-| Session started     | INFO       | Emitted on the first request of a new Claude Code session  |
 | Operation log       | INFO/ERROR | Emitted for every request with full metadata               |
 | Request body        | DEBUG      | Raw request JSON (requires `capture_request_body: true`)   |
 | Response body       | DEBUG      | Raw response JSON (requires `capture_response_body: true`) |

@@ -6,7 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.uber.org/zap"
 )
 
 func TestEmitMetrics(t *testing.T) {
@@ -281,15 +283,14 @@ func TestEmitMetrics_ActiveRequests(t *testing.T) {
 	assert.True(t, metricNames["anthropic.requests.active"])
 }
 
-func TestEmitMetrics_SessionMetrics(t *testing.T) {
+func TestEmitMetrics_ProjectMetrics(t *testing.T) {
 	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:     "ses_test123",
-		ProjectPath:   "/home/user/my-project",
-		ProjectName:   "my-project",
-		RequestNumber: 1,
-		IsNewSession:  true,
+	data.claudeCode = &ClaudeCodeContext{
+		IsClaudeCode: true,
+		WorkingDir:   "/home/user/my-project",
+		ProjectName:  "my-project",
+		UserID:       "user-xyz",
 	}
 
 	err := tb.emitMetrics(context.Background(), data)
@@ -304,19 +305,15 @@ func TestEmitMetrics_SessionMetrics(t *testing.T) {
 		metricNames[allMetrics.At(i).Name()] = true
 	}
 
-	assert.True(t, metricNames["claude_code.session.requests"], "should have session requests metric")
-	assert.True(t, metricNames["claude_code.session.active_duration"], "should have session active duration metric")
-	assert.True(t, metricNames["claude_code.session.cost"], "should have session cost metric")
-	assert.True(t, metricNames["claude_code.session.tokens.input"], "should have session input tokens metric")
-	assert.True(t, metricNames["claude_code.session.tokens.output"], "should have session output tokens metric")
 	assert.True(t, metricNames["claude_code.project.requests"], "should have project requests metric")
 	assert.True(t, metricNames["claude_code.project.cost"], "should have project cost metric")
+	assert.False(t, metricNames["claude_code.session.requests"], "should not have session metrics")
 }
 
-func TestEmitMetrics_NoSessionMetrics(t *testing.T) {
+func TestEmitMetrics_NoProjectMetrics(t *testing.T) {
 	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	// No session set
+	// No claudeCode set
 
 	err := tb.emitMetrics(context.Background(), data)
 	require.NoError(t, err)
@@ -330,16 +327,15 @@ func TestEmitMetrics_NoSessionMetrics(t *testing.T) {
 		metricNames[allMetrics.At(i).Name()] = true
 	}
 
-	assert.False(t, metricNames["claude_code.session.requests"], "should not have session metrics without session")
-	assert.False(t, metricNames["claude_code.project.requests"], "should not have project metrics without session")
+	assert.False(t, metricNames["claude_code.project.requests"], "should not have project metrics without claudeCode")
 }
 
 func TestEmitMetrics_ProjectNameInCommonAttrs(t *testing.T) {
 	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:   "ses_test",
-		ProjectName: "my-project",
+	data.claudeCode = &ClaudeCodeContext{
+		IsClaudeCode: true,
+		ProjectName:  "my-project",
 	}
 
 	err := tb.emitMetrics(context.Background(), data)
@@ -490,89 +486,12 @@ func TestEmitMetrics_OutputUtilization(t *testing.T) {
 	assert.True(t, found, "should emit anthropic.tokens.output_utilization gauge")
 }
 
-func TestEmitMetrics_SessionEnrichmentMetrics(t *testing.T) {
-	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
-	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:   "ses_enrich",
-		ProjectName: "my-project",
-	}
-	data.response.Usage.CacheReadInputTokens = 500
-	data.request.Messages = []Message{
-		{Role: "user", Content: []byte(`"Hello"`)},
-		{Role: "assistant", Content: []byte(`"Hi"`)},
-		{Role: "user", Content: []byte(`"Do something"`)},
-	}
-	data.toolCalls = []ToolCallInfo{
-		{ToolName: "Edit", LinesAdded: 10, LinesRemoved: 3},
-		{ToolName: "Read"},
-	}
-
-	err := tb.emitMetrics(context.Background(), data)
-	require.NoError(t, err)
-
-	metrics := metricsSink.AllMetrics()
-	allMetrics := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
-
-	metricNames := make(map[string]bool)
-	for i := 0; i < allMetrics.Len(); i++ {
-		metricNames[allMetrics.At(i).Name()] = true
-	}
-
-	assert.True(t, metricNames["claude_code.session.tokens.cache_read"], "should have session cache read tokens")
-	assert.True(t, metricNames["claude_code.session.conversation_turns"], "should have session conversation turns")
-	assert.True(t, metricNames["claude_code.session.tool_calls"], "should have session tool calls")
-	assert.True(t, metricNames["claude_code.session.lines_changed"], "should have session lines changed")
-
-	// Verify cache read value
-	for i := 0; i < allMetrics.Len(); i++ {
-		m := allMetrics.At(i)
-		if m.Name() == "claude_code.session.tokens.cache_read" {
-			dp := m.Sum().DataPoints().At(0)
-			assert.Equal(t, int64(500), dp.IntValue())
-		}
-		if m.Name() == "claude_code.session.tool_calls" {
-			dp := m.Sum().DataPoints().At(0)
-			assert.Equal(t, int64(2), dp.IntValue())
-		}
-		if m.Name() == "claude_code.session.lines_changed" {
-			dp := m.Sum().DataPoints().At(0)
-			assert.Equal(t, int64(13), dp.IntValue()) // 10+3
-		}
-	}
-}
-
-func TestEmitMetrics_SessionErrors(t *testing.T) {
-	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
-	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:   "ses_err",
-		ProjectName: "my-project",
-	}
-	data.statusCode = 500
-	data.response = nil
-	data.cost = CostResult{}
-
-	err := tb.emitMetrics(context.Background(), data)
-	require.NoError(t, err)
-
-	metrics := metricsSink.AllMetrics()
-	allMetrics := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
-
-	metricNames := make(map[string]bool)
-	for i := 0; i < allMetrics.Len(); i++ {
-		metricNames[allMetrics.At(i).Name()] = true
-	}
-
-	assert.True(t, metricNames["claude_code.session.errors"], "should have session errors metric")
-}
-
 func TestEmitMetrics_ProjectEnrichmentMetrics(t *testing.T) {
 	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:   "ses_proj",
-		ProjectName: "my-project",
+	data.claudeCode = &ClaudeCodeContext{
+		IsClaudeCode: true,
+		ProjectName:  "my-project",
 	}
 
 	err := tb.emitMetrics(context.Background(), data)
@@ -593,9 +512,9 @@ func TestEmitMetrics_ProjectEnrichmentMetrics(t *testing.T) {
 func TestEmitMetrics_ProjectErrors(t *testing.T) {
 	tb, _, metricsSink, _ := newTestTelemetryBuilder(t)
 	data := newTestRequestData()
-	data.session = &SessionContext{
-		SessionID:   "ses_proj_err",
-		ProjectName: "my-project",
+	data.claudeCode = &ClaudeCodeContext{
+		IsClaudeCode: true,
+		ProjectName:  "my-project",
 	}
 	data.statusCode = 429
 	data.response = nil
@@ -613,6 +532,35 @@ func TestEmitMetrics_ProjectErrors(t *testing.T) {
 	}
 
 	assert.True(t, metricNames["claude_code.project.errors"], "should have project errors metric")
+}
+
+func TestEmitMetrics_WebSearchPricing(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.WebSearchPricePer1000 = 20.0
+	metricsSink := &consumertest.MetricsSink{}
+	tb := newTelemetryBuilder(cfg, zap.NewNop(), nil, metricsSink, nil)
+
+	data := newTestRequestData()
+	data.response.Usage.ServerToolUse = &ServerToolUse{
+		WebSearchRequests: 10,
+	}
+
+	err := tb.emitMetrics(context.Background(), data)
+	require.NoError(t, err)
+
+	metrics := metricsSink.AllMetrics()
+	allMetrics := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+
+	for i := 0; i < allMetrics.Len(); i++ {
+		m := allMetrics.At(i)
+		if m.Name() == "anthropic.cost.server_tool_use.web_search" {
+			dp := m.Sum().DataPoints().At(0)
+			// 10 searches * 20.0 / 1000 = 0.2
+			assert.InDelta(t, 0.2, dp.DoubleValue(), 0.0000001)
+			return
+		}
+	}
+	t.Fatal("anthropic.cost.server_tool_use.web_search metric not found")
 }
 
 func TestEmitMetrics_ErrorsByType(t *testing.T) {

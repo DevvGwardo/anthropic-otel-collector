@@ -39,29 +39,6 @@ func UserTotalCost() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// UserActiveSessions returns a stat panel showing the number of active sessions.
-func UserActiveSessions() cog.Builder[dashboard.Panel] {
-	return stat.NewPanelBuilder().
-		Title("Active Sessions").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(6).
-		Unit("short").
-		Thresholds(greenThresholds()).
-		GraphMode(common.BigValueGraphModeArea).
-		ColorMode(common.BigValueColorModeValue).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				fs(`count(count by (claude_code_session_id) (increase(`+MetricSessionRequests+`{%s}[$__range])))`),
-				"Active Sessions",
-			),
-		)
-}
-
 // UserTotalRequests returns a stat panel showing total requests.
 func UserTotalRequests() cog.Builder[dashboard.Panel] {
 	return stat.NewPanelBuilder().
@@ -81,29 +58,6 @@ func UserTotalRequests() cog.Builder[dashboard.Panel] {
 			promInstantQuery(
 				f(`sum(increase(anthropic_requests_total{%s}[$__range]))`),
 				"Total Requests",
-			),
-		)
-}
-
-// UserAvgCostPerSession returns a stat panel showing average cost per session.
-func UserAvgCostPerSession() cog.Builder[dashboard.Panel] {
-	return stat.NewPanelBuilder().
-		Title("Avg Cost / Session").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(6).
-		Unit("currencyUSD").
-		Thresholds(greenThresholds()).
-		GraphMode(common.BigValueGraphModeArea).
-		ColorMode(common.BigValueColorModeValue).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				fs(`sum(increase(anthropic_cost_total{%s}[$__range])) / count(count by (claude_code_session_id) (increase(`+MetricSessionRequests+`{%s}[$__range])))`),
-				"Avg Cost / Session",
 			),
 		)
 }
@@ -327,111 +281,7 @@ func UserCumulativeCostByProject() cog.Builder[dashboard.Panel] {
 }
 
 // ---------------------------------------------------------------------------
-// Row 3: Session Activity
-// ---------------------------------------------------------------------------
-
-// UserSessionsOverTime returns a timeseries showing active session count over time.
-func UserSessionsOverTime() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Sessions Over Time").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				fs(`count(count by (claude_code_session_id) (rate(`+MetricSessionRequests+`{%s}[$__rate_interval])))`),
-				"Active Sessions",
-			),
-		)
-}
-
-// UserConversationDepthOverTime returns a timeseries showing conversation turns rate.
-func UserConversationDepthOverTime() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Conversation Depth Over Time").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				fs(`sum(rate(claude_code_session_conversation_turns_total{%s}[$__rate_interval]))`),
-				"Conversation Turns/s",
-			),
-		)
-}
-
-// UserSessionDuration returns a timeseries showing active duration per session.
-func UserSessionDuration() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Session Duration").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		Unit("s").
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				fs(`sum by (claude_code_session_id) (`+MetricSessionActiveDuration+`{%s})`),
-				"{{claude_code_session_id}}",
-			),
-		)
-}
-
-// UserSessionCostDistribution returns a piechart showing cost distribution across sessions.
-func UserSessionCostDistribution() cog.Builder[dashboard.Panel] {
-	return piechart.NewPanelBuilder().
-		Title("Session Cost Distribution").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(12).
-		Unit("currencyUSD").
-		PieType(piechart.PieChartTypeDonut).
-		Legend(
-			piechart.NewPieChartLegendOptionsBuilder().
-				DisplayMode(common.LegendDisplayModeList).
-				Placement(common.LegendPlacementBottom).
-				ShowLegend(true).
-				Values([]piechart.PieChartLegendValues{piechart.PieChartLegendValuesValue, piechart.PieChartLegendValuesPercent}),
-		).
-		Tooltip(singleTooltip()).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				fs(`sum by (claude_code_session_id) (increase(`+MetricSessionCost+`{%s}[$__range]))`),
-				"{{claude_code_session_id}}",
-			),
-		).
-		Thresholds(greenThresholds()).
-		ColorScheme(paletteColor())
-}
-
-// UserAvgRequestsPerSession returns a timeseries showing average requests per session.
-func UserAvgRequestsPerSession() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Avg Requests / Session").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(12).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				fs(`sum(rate(`+MetricSessionRequests+`{%s}[$__rate_interval])) / count(count by (claude_code_session_id) (rate(`+MetricSessionRequests+`{%s}[$__rate_interval])))`),
-				"Avg Requests/Session",
-			),
-		)
-}
-
-// ---------------------------------------------------------------------------
-// Row 4: Productivity
+// Row 3: Productivity
 // ---------------------------------------------------------------------------
 
 // UserToolCallDistribution returns a piechart showing distribution of tool calls by tool name.
@@ -558,30 +408,8 @@ func UserFilesTouched() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// UserToolCallsBySession returns a stacked timeseries showing tool calls per session.
-func UserToolCallsBySession() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Tool Calls by Session").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(16).
-		FillOpacity(30).
-		Stacking(
-			common.NewStackingConfigBuilder().
-				Mode(common.StackingModeNormal),
-		).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				fs(`sum by (claude_code_session_id) (rate(claude_code_session_tool_calls_total{%s}[$__rate_interval]))`),
-				"{{claude_code_session_id}}",
-			),
-		)
-}
-
 // ---------------------------------------------------------------------------
-// Row 5: Efficiency & Performance
+// Row 4: Efficiency & Performance
 // ---------------------------------------------------------------------------
 
 // UserCacheHitRatio returns a timeseries showing cache hit ratio over time.
