@@ -13,7 +13,7 @@ func TotalCost() cog.Builder[dashboard.Panel] {
 		Title("Total Cost").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("currencyUSD").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -36,7 +36,7 @@ func TotalRequests() cog.Builder[dashboard.Panel] {
 		Title("Total Requests").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("short").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -59,7 +59,7 @@ func ErrorRate() cog.Builder[dashboard.Panel] {
 		Title("Error Rate").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("percent").
 		Thresholds(redGreenThresholds(5)).
 		GraphMode(common.BigValueGraphModeArea).
@@ -82,7 +82,7 @@ func AvgLatency() cog.Builder[dashboard.Panel] {
 		Title("Avg Latency").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("s").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -105,7 +105,7 @@ func TotalTokens() cog.Builder[dashboard.Panel] {
 		Title("Total Tokens").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("short").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -122,59 +122,13 @@ func TotalTokens() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// CacheHitRatio returns a stat panel showing the average cache hit ratio.
-func CacheHitRatio() cog.Builder[dashboard.Panel] {
-	return stat.NewPanelBuilder().
-		Title("Cache Hit Ratio").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(4).
-		Unit("percentunit").
-		Thresholds(greenThresholds()).
-		GraphMode(common.BigValueGraphModeArea).
-		ColorMode(common.BigValueColorModeValue).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				f(`avg(anthropic_cache_hit_ratio{%s})`),
-				"Cache Hit Ratio",
-			),
-		)
-}
-
-// AvgCostPerRequest returns a stat panel showing the average cost per request.
-func AvgCostPerRequest() cog.Builder[dashboard.Panel] {
-	return stat.NewPanelBuilder().
-		Title("Avg Cost / Request").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(5).
-		Unit("currencyUSD").
-		Thresholds(greenThresholds()).
-		GraphMode(common.BigValueGraphModeArea).
-		ColorMode(common.BigValueColorModeValue).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				f(`sum(rate(anthropic_cost_request_sum{%s}[$__rate_interval])) / sum(rate(anthropic_cost_request_count{%s}[$__rate_interval]))`),
-				"Avg Cost / Request",
-			),
-		)
-}
-
 // OutputThroughput returns a stat panel showing average output token throughput.
 func OutputThroughput() cog.Builder[dashboard.Panel] {
 	return stat.NewPanelBuilder().
 		Title("Output Throughput").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(5).
+		Span(6).
 		Unit("suffix: tok/s").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
@@ -191,14 +145,14 @@ func OutputThroughput() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// RequestsPerMinute returns a stat panel showing the current request rate per minute.
-func RequestsPerMinute() cog.Builder[dashboard.Panel] {
+// CacheHitRatio returns a stat panel showing the average cache hit ratio.
+func CacheHitRatio() cog.Builder[dashboard.Panel] {
 	return stat.NewPanelBuilder().
-		Title("Requests / Min").
+		Title("Cache Hit Ratio").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(5).
-		Unit("short").
+		Span(6).
+		Unit("percentunit").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).
 		ColorMode(common.BigValueColorModeValue).
@@ -208,31 +162,8 @@ func RequestsPerMinute() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`sum(rate(anthropic_requests_total{%s}[$__rate_interval])) * 60`),
-				"Requests / Min",
-			),
-		)
-}
-
-// FastModeRequests returns a stat panel showing the total fast-mode requests.
-func FastModeRequests() cog.Builder[dashboard.Panel] {
-	return stat.NewPanelBuilder().
-		Title("Fast Mode Requests").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(5).
-		Unit("short").
-		Thresholds(greenThresholds()).
-		GraphMode(common.BigValueGraphModeArea).
-		ColorMode(common.BigValueColorModeValue).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
-		WithTarget(
-			promInstantQuery(
-				f(`sum(increase(anthropic_requests_by_speed_total{%s, speed="fast"}[$__range])) or vector(0)`),
-				"Fast Mode Requests",
+				f(`avg(anthropic_cache_hit_ratio{%s})`),
+				"Cache Hit Ratio",
 			),
 		)
 }
@@ -243,7 +174,7 @@ func CacheSavingsStat() cog.Builder[dashboard.Panel] {
 		Title("Cache Savings").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(4).
+		Span(6).
 		Unit("currencyUSD").
 		Thresholds(greenThresholds()).
 		GraphMode(common.BigValueGraphModeArea).

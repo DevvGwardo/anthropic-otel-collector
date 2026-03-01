@@ -7,7 +7,6 @@ import (
 	"github.com/grafana/grafana-foundation-sdk/go/timeseries"
 )
 
-
 // RequestRateLimitUtilization returns a gauge showing request rate limit utilization.
 func RequestRateLimitUtilization() cog.Builder[dashboard.Panel] {
 	return gauge.NewPanelBuilder().
@@ -65,70 +64,13 @@ func OutputTokenRateLimitUtilization() cog.Builder[dashboard.Panel] {
 		Thresholds(utilizationThresholds())
 }
 
-// RequestsRemaining returns a timeseries showing remaining request rate limit capacity.
-func RequestsRemaining() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Requests Remaining").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		WithTarget(
-			promRangeQuery(
-				`avg(anthropic_ratelimit_requests_remaining{`+filter+`})`,
-				"Remaining",
-			),
-		).
-		Unit("short").
-		Legend(defaultLegend()).
-		Tooltip(singleTooltip()).
-		Thresholds(greenThresholds())
-}
-
-// InputTokensRemaining returns a timeseries showing remaining input token rate limit capacity.
-func InputTokensRemaining() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Input Tokens Remaining").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		WithTarget(
-			promRangeQuery(
-				`avg(anthropic_ratelimit_input_tokens_remaining{`+filter+`})`,
-				"Remaining",
-			),
-		).
-		Unit("short").
-		Legend(defaultLegend()).
-		Tooltip(singleTooltip()).
-		Thresholds(greenThresholds())
-}
-
-// OutputTokensRemaining returns a timeseries showing remaining output token rate limit capacity.
-func OutputTokensRemaining() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Output Tokens Remaining").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		WithTarget(
-			promRangeQuery(
-				`avg(anthropic_ratelimit_output_tokens_remaining{`+filter+`})`,
-				"Remaining",
-			),
-		).
-		Unit("short").
-		Legend(defaultLegend()).
-		Tooltip(singleTooltip()).
-		Thresholds(greenThresholds())
-}
-
 // RateLimitUtilizationOverTime returns a timeseries showing all rate limit utilization over time.
 func RateLimitUtilizationOverTime() cog.Builder[dashboard.Panel] {
 	return timeseries.NewPanelBuilder().
 		Title("Rate Limit Utilization Over Time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(24).
+		Span(12).
 		WithTarget(
 			promRangeQuery(
 				`avg(anthropic_ratelimit_requests_utilization_ratio{`+filter+`})`,
@@ -154,4 +96,36 @@ func RateLimitUtilizationOverTime() cog.Builder[dashboard.Panel] {
 		Tooltip(multiTooltip()).
 		Thresholds(utilizationThresholds()).
 		ColorScheme(paletteColor())
+}
+
+// RateLimitRemaining returns a timeseries showing remaining rate limits for all dimensions.
+func RateLimitRemaining() cog.Builder[dashboard.Panel] {
+	return timeseries.NewPanelBuilder().
+		Title("Rate Limit Remaining").
+		Description("Remaining rate limit capacity for requests, input tokens, and output tokens").
+		Datasource(datasourceRef()).
+		Height(8).
+		Span(12).
+		WithTarget(
+			promRangeQuery(
+				`avg(anthropic_ratelimit_requests_remaining{`+filter+`})`,
+				"Requests Remaining",
+			),
+		).
+		WithTarget(
+			promRangeQuery(
+				`avg(anthropic_ratelimit_input_tokens_remaining{`+filter+`})`,
+				"Input Tokens Remaining",
+			),
+		).
+		WithTarget(
+			promRangeQuery(
+				`avg(anthropic_ratelimit_output_tokens_remaining{`+filter+`})`,
+				"Output Tokens Remaining",
+			),
+		).
+		Unit("short").
+		Legend(defaultLegend()).
+		Tooltip(multiTooltip()).
+		Thresholds(greenThresholds())
 }

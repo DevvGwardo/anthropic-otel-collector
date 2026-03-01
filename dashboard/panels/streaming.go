@@ -64,7 +64,7 @@ func SSEEventTypesOverTime() cog.Builder[dashboard.Panel] {
 		Description("Rate of server-sent events by type over time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(24).
+		Span(12).
 		WithTarget(promQuery(
 			fmt.Sprintf(`sum by (event_type) (rate(%s{%s}[$__rate_interval]))`, MetricStreamingEvents, filter),
 			"{{event_type}}",
@@ -94,7 +94,7 @@ func AvgTTFTvsThroughput() cog.Builder[dashboard.Panel] {
 		Description("Average time to first token compared with output token throughput").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
+		Span(24).
 		WithTarget(ttftQuery).
 		WithTarget(throughputQuery).
 		Unit("s").

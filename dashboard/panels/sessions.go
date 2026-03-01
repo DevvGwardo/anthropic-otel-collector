@@ -27,7 +27,7 @@ func ProjectCostBreakdown() cog.Builder[dashboard.Panel] {
 		Description("Cost distribution across projects over the selected range").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
+		Span(8).
 		Unit("currencyUSD").
 		PieType(piechart.PieChartTypeDonut).
 		Legend(
@@ -58,7 +58,7 @@ func ProjectRequestsOverTime() cog.Builder[dashboard.Panel] {
 		Description("Request rate broken down by project").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
+		Span(16).
 		FillOpacity(30).
 		Stacking(
 			common.NewStackingConfigBuilder().
@@ -69,6 +69,30 @@ func ProjectRequestsOverTime() cog.Builder[dashboard.Panel] {
 		WithTarget(
 			promRangeQuery(
 				fmt.Sprintf(`sum by (claude_code_project_name) (rate(%s{%s}[$__rate_interval]))`, MetricProjectRequests, projectFilter),
+				"{{claude_code_project_name}}",
+			),
+		)
+}
+
+// CumulativeCostByProject returns a stacked timeseries showing cost rate by project per 5-minute window.
+func CumulativeCostByProject() cog.Builder[dashboard.Panel] {
+	return timeseries.NewPanelBuilder().
+		Title("Cost Rate by Project (5m)").
+		Description("Cost per 5-minute window by project, resilient to counter resets").
+		Datasource(datasourceRef()).
+		Height(8).
+		Span(24).
+		Unit("currencyUSD").
+		FillOpacity(30).
+		Stacking(
+			common.NewStackingConfigBuilder().
+				Mode(common.StackingModeNormal),
+		).
+		Legend(defaultLegend()).
+		Tooltip(multiTooltip()).
+		WithTarget(
+			promRangeQuery(
+				fmt.Sprintf(`sum by (claude_code_project_name) (increase(%s{%s}[5m]))`, MetricProjectCost, projectFilter),
 				"{{claude_code_project_name}}",
 			),
 		)

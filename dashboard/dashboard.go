@@ -18,10 +18,6 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		Timezone("browser").
 		Tooltip(dashboard.DashboardCursorSyncCrosshair).
 		Variables(buildVariables()).
-		// Row 0: Projects
-		WithRow(dashboard.NewRowBuilder("Projects")).
-		WithPanel(panels.ProjectCostBreakdown()).
-		WithPanel(panels.ProjectRequestsOverTime()).
 		// Row 1: Overview
 		WithRow(dashboard.NewRowBuilder("Overview")).
 		WithPanel(panels.TotalCost()).
@@ -29,30 +25,26 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.ErrorRate()).
 		WithPanel(panels.AvgLatency()).
 		WithPanel(panels.TotalTokens()).
-		WithPanel(panels.CacheHitRatio()).
-		WithPanel(panels.AvgCostPerRequest()).
 		WithPanel(panels.OutputThroughput()).
-		WithPanel(panels.RequestsPerMinute()).
-		WithPanel(panels.FastModeRequests()).
+		WithPanel(panels.CacheHitRatio()).
 		WithPanel(panels.CacheSavingsStat()).
 		// Row 2: Cost Analysis
 		WithRow(dashboard.NewRowBuilder("Cost Analysis")).
 		WithPanel(panels.CostOverTime()).
 		WithPanel(panels.CostByModel()).
 		WithPanel(panels.CostByCategory()).
-		WithPanel(panels.CumulativeCost()).
 		WithPanel(panels.AvgCostPerRequestTimeseries()).
-		WithPanel(panels.CostMultipliedRequests()).
-		WithPanel(panels.WebSearchCost()).
+		WithPanel(panels.CostPerOutputToken()).
 		WithPanel(panels.CacheSavingsOverTime()).
+		WithPanel(panels.CreditUsageOverTime()).
+		WithPanel(panels.WebSearchCost()).
 		// Row 3: Token Usage
 		WithRow(dashboard.NewRowBuilder("Token Usage")).
 		WithPanel(panels.TokenUsageOverTime()).
 		WithPanel(panels.CacheHitRatioOverTime()).
 		WithPanel(panels.InputVsOutputBreakdown()).
-		WithPanel(panels.TokensByModel()).
 		WithPanel(panels.CacheTokensDetail()).
-		WithPanel(panels.TotalInputTokensBreakdown()).
+		WithPanel(panels.OutputUtilization()).
 		// Row 4: Performance
 		WithRow(dashboard.NewRowBuilder("Performance")).
 		WithPanel(panels.AvgOperationDuration()).
@@ -78,10 +70,8 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.RequestRateLimitUtilization()).
 		WithPanel(panels.InputTokenRateLimitUtilization()).
 		WithPanel(panels.OutputTokenRateLimitUtilization()).
-		WithPanel(panels.RequestsRemaining()).
-		WithPanel(panels.InputTokensRemaining()).
-		WithPanel(panels.OutputTokensRemaining()).
 		WithPanel(panels.RateLimitUtilizationOverTime()).
+		WithPanel(panels.RateLimitRemaining()).
 		// Row 7: Model & Request Analysis
 		WithRow(dashboard.NewRowBuilder("Model & Request Analysis")).
 		WithPanel(panels.RequestsByModel()).
@@ -97,8 +87,13 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		WithPanel(panels.AvgStreamingDuration()).
 		WithPanel(panels.AvgChunksPerRequest()).
 		WithPanel(panels.SSEEventTypesOverTime()).
+		WithPanel(panels.StreamingVsNonStreaming()).
 		WithPanel(panels.AvgTTFTvsThroughput()).
-		WithPanel(panels.StreamingVsNonStreaming())
+		// Row 9: Projects
+		WithRow(dashboard.NewRowBuilder("Projects")).
+		WithPanel(panels.ProjectCostBreakdown()).
+		WithPanel(panels.ProjectRequestsOverTime()).
+		WithPanel(panels.CumulativeCostByProject())
 
 	return builder.Build()
 }

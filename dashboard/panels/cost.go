@@ -102,25 +102,6 @@ func CostByCategory() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// CumulativeCost returns a timeseries panel showing cost rate per 5-minute window.
-func CumulativeCost() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Cost Rate (5m)").
-		Description("Cost per 5-minute window, resilient to counter resets").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		Unit("currencyUSD").
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				f(`sum(increase(anthropic_cost_total{%s}[5m]))`),
-				"Cost / 5m",
-			),
-		)
-}
-
 // AvgCostPerRequestTimeseries returns a timeseries panel showing average cost per request over time.
 func AvgCostPerRequestTimeseries() cog.Builder[dashboard.Panel] {
 	return timeseries.NewPanelBuilder().
@@ -140,44 +121,21 @@ func AvgCostPerRequestTimeseries() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// CostMultipliedRequests returns a stacked timeseries panel showing request rates by cost multiplier.
-func CostMultipliedRequests() cog.Builder[dashboard.Panel] {
+// CostPerOutputToken returns a timeseries panel showing cost per output token over time.
+func CostPerOutputToken() cog.Builder[dashboard.Panel] {
 	return timeseries.NewPanelBuilder().
-		Title("Requests by Cost Multiplier").
-		Description("Request rate broken down by cost multiplier").
+		Title("Cost / Output Token").
+		Description("Cost per output token over time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(12).
-		FillOpacity(30).
-		Stacking(
-			common.NewStackingConfigBuilder().
-				Mode(common.StackingModeNormal),
-		).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				f(`sum by (multiplier) (rate(anthropic_cost_multiplied_requests_total{%s}[$__rate_interval]))`),
-				"{{multiplier}}x",
-			),
-		)
-}
-
-// WebSearchCost returns a timeseries panel showing web search tool cost rate.
-func WebSearchCost() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Web Search Cost").
-		Description("Web search server tool cost rate in $/hr").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(12).
+		Span(8).
 		Unit("currencyUSD").
 		Legend(defaultLegend()).
 		Tooltip(multiTooltip()).
 		WithTarget(
 			promRangeQuery(
-				f(`sum(rate(anthropic_cost_server_tool_use_web_search_total{%s}[$__rate_interval])) * 3600`),
-				"Web Search $/hr",
+				f(`sum(rate(anthropic_cost_total{%s}[$__rate_interval])) / sum(rate(anthropic_tokens_output_total{%s}[$__rate_interval]))`),
+				"Cost / Output Token",
 			),
 		)
 }
@@ -189,7 +147,7 @@ func CacheSavingsOverTime() cog.Builder[dashboard.Panel] {
 		Description("Estimated cache savings rate in $/hr").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(24).
+		Span(8).
 		Unit("currencyUSD").
 		Legend(defaultLegend()).
 		Tooltip(multiTooltip()).
@@ -197,6 +155,44 @@ func CacheSavingsOverTime() cog.Builder[dashboard.Panel] {
 			promRangeQuery(
 				f(`sum(rate(anthropic_cost_cache_savings_total{%s}[$__rate_interval])) * 3600`),
 				"Cache Savings $/hr",
+			),
+		)
+}
+
+// CreditUsageOverTime returns a timeseries panel showing credit usage rate in $/hr.
+func CreditUsageOverTime() cog.Builder[dashboard.Panel] {
+	return timeseries.NewPanelBuilder().
+		Title("Credit Usage Over Time").
+		Description("Credit usage rate in $/hr").
+		Datasource(datasourceRef()).
+		Height(8).
+		Span(8).
+		Unit("currencyUSD").
+		Legend(defaultLegend()).
+		Tooltip(multiTooltip()).
+		WithTarget(
+			promRangeQuery(
+				f(`sum(rate(anthropic_cost_credit_usage_total{%s}[$__rate_interval])) * 3600`),
+				"Credit Usage $/hr",
+			),
+		)
+}
+
+// WebSearchCost returns a timeseries panel showing web search tool cost rate.
+func WebSearchCost() cog.Builder[dashboard.Panel] {
+	return timeseries.NewPanelBuilder().
+		Title("Web Search Cost").
+		Description("Web search server tool cost rate in $/hr").
+		Datasource(datasourceRef()).
+		Height(8).
+		Span(8).
+		Unit("currencyUSD").
+		Legend(defaultLegend()).
+		Tooltip(multiTooltip()).
+		WithTarget(
+			promRangeQuery(
+				f(`sum(rate(anthropic_cost_server_tool_use_web_search_total{%s}[$__rate_interval])) * 3600`),
+				"Web Search $/hr",
 			),
 		)
 }

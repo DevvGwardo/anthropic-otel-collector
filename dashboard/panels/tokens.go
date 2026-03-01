@@ -1,7 +1,6 @@
 package panels
 
 import (
-	"github.com/grafana/grafana-foundation-sdk/go/bargauge"
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
 	"github.com/grafana/grafana-foundation-sdk/go/common"
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
@@ -107,32 +106,6 @@ func InputVsOutputBreakdown() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// TokensByModel returns a stacked timeseries showing token rates broken down by model.
-func TokensByModel() cog.Builder[dashboard.Panel] {
-	return timeseries.NewPanelBuilder().
-		Title("Tokens by Model").
-		Description("Token usage rate broken down by model").
-		Datasource(datasourceRef()).
-		Height(8).
-		Span(8).
-		Unit("short").
-		Stacking(common.NewStackingConfigBuilder().Mode(common.StackingModeNormal)).
-		Legend(defaultLegend()).
-		Tooltip(multiTooltip()).
-		WithTarget(
-			promRangeQuery(
-				f(`sum by (gen_ai_request_model) (rate(anthropic_tokens_input_total{%s}[$__rate_interval]))`),
-				"{{gen_ai_request_model}} Input",
-			),
-		).
-		WithTarget(
-			promRangeQuery(
-				f(`sum by (gen_ai_request_model) (rate(anthropic_tokens_output_total{%s}[$__rate_interval]))`),
-				"{{gen_ai_request_model}} Output",
-			),
-		)
-}
-
 // CacheTokensDetail returns a timeseries showing cache read and creation token rates.
 func CacheTokensDetail() cog.Builder[dashboard.Panel] {
 	return timeseries.NewPanelBuilder().
@@ -158,36 +131,21 @@ func CacheTokensDetail() cog.Builder[dashboard.Panel] {
 		)
 }
 
-// TotalInputTokensBreakdown returns a horizontal bar gauge showing the breakdown of input token types.
-func TotalInputTokensBreakdown() cog.Builder[dashboard.Panel] {
-	return bargauge.NewPanelBuilder().
-		Title("Total Input Tokens Breakdown").
-		Description("Breakdown of input, cache read, and cache creation tokens over the selected range").
+// OutputUtilization returns a timeseries showing output token utilization over time.
+func OutputUtilization() cog.Builder[dashboard.Panel] {
+	return timeseries.NewPanelBuilder().
+		Title("Output Utilization").
+		Description("Average output token utilization ratio over time").
 		Datasource(datasourceRef()).
 		Height(8).
-		Span(24).
-		Orientation(common.VizOrientationHorizontal).
-		Thresholds(greenThresholds()).
-		ReduceOptions(
-			common.NewReduceDataOptionsBuilder().
-				Calcs([]string{"lastNotNull"}),
-		).
+		Span(8).
+		Unit("percentunit").
+		Legend(defaultLegend()).
+		Tooltip(multiTooltip()).
 		WithTarget(
-			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_input_total{%s}[$__range]))`),
-				"Input",
-			),
-		).
-		WithTarget(
-			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_cache_read_total{%s}[$__range]))`),
-				"Cache Read",
-			),
-		).
-		WithTarget(
-			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_cache_creation_total{%s}[$__range]))`),
-				"Cache Creation",
+			promRangeQuery(
+				f(`avg(anthropic_tokens_output_utilization_ratio{%s})`),
+				"Output Utilization",
 			),
 		)
 }
