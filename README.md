@@ -27,9 +27,9 @@ When used with Claude Code, the collector automatically detects requests and ext
 
 ## Quick Start
 
-### Docker Compose (recommended)
+### Docker Compose
 
-Starts the collector alongside a [Grafana LGTM](https://github.com/grafana/docker-otel-lgtm) stack (Loki, Grafana, Tempo, Mimir) for instant dashboarding:
+Starts the collector alongside a local [Grafana LGTM](https://github.com/grafana/docker-otel-lgtm) stack (Loki, Grafana, Tempo, Mimir) for development and testing:
 
 ```bash
 docker compose up -d
@@ -254,30 +254,15 @@ Two pre-built Grafana dashboards are included and auto-provisioned when using Do
 
 **File:** `dashboard/dist/anthropic-claude-code-usage.json`
 
-Tracks API usage with a focus on Claude Code projects:
-
-- Request volume, error rates, and active requests
-- Token usage breakdown (input, output, cache read, cache creation)
-- Cost tracking per request and per project
-- Cache hit ratio and savings
-- Rate limit utilization
-- Streaming performance (time-to-first-token, throughput)
-- Model and speed mode breakdown
-
-![Claude Code Usage Dashboard](docs/images/dashboard-usage.png)
+Tracks API usage with a focus on Claude Code projects: request volume, error rates, token usage breakdown, cost tracking per project, cache hit ratio, rate limit utilization, streaming performance, and model/speed mode breakdown.
 
 ### Developer Activity
 
 **File:** `dashboard/dist/claude-code-developer-activity.json`
 
-Tracks developer workflows and tool usage patterns:
+Tracks developer workflows and tool usage patterns: tool call frequency by type, file operations with lines changed, file types affected, and session depth metrics.
 
-- Tool call frequency by type (Edit, Write, Read, Bash, Glob, Grep)
-- File operations (edits, creates, reads) with lines changed
-- File types affected by operations
-- Session and conversation depth metrics
-
-![Developer Activity Dashboard](docs/images/dashboard-activity.png)
+See [docs/images/](docs/images/) for dashboard screenshots.
 
 ### Regenerating dashboards
 
