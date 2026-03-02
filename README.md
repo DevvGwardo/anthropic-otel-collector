@@ -1,29 +1,45 @@
 # Anthropic OTel Collector
 
-A custom [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) that acts as a transparent reverse proxy in front of the Anthropic API, capturing comprehensive telemetry — traces, metrics, and logs — for every API call.
+A custom [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) that acts as a transparent reverse proxy for LLM APIs, capturing comprehensive telemetry — traces, metrics, and logs — for every API call.
 
-Point your Anthropic SDK at the collector instead of `https://api.anthropic.com` and get full observability with zero code changes.
+Supports **multiple providers** (Anthropic, OpenAI, Google Gemini) through a pluggable adapter framework, with first-class [OpenClaw](https://github.com/openclaw) integration for multi-agent observability.
+
+Point your LLM SDK at the collector instead of the provider API and get full observability with zero code changes.
 
 ## How It Works
 
 ```
-┌──────────────┐       ┌─────────────────────┐       ┌───────────────────┐
-│  Anthropic   │──────▶│   OTel Collector    │──────▶│  Anthropic API    │
-│  SDK Client  │◀──────│   (reverse proxy)   │◀──────│  api.anthropic.com│
-└──────────────┘       └──────────┬──────────┘       └───────────────────┘
-                                  │
+┌──────────────┐       ┌─────────────────────────────────────┐       ┌───────────────────┐
+│   LLM SDK    │──────▶│     OTel Collector (Multi-Provider) │──────▶│  Provider APIs    │
+│   Client     │◀──────│  ┌─────────┐ ┌─────────┐ ┌────────┐│◀──────│  (Anthropic,      │
+│              │       │  │Anthropic│ │ OpenAI  │ │ Gemini ││       │   OpenAI, etc.)   │
+└──────────────┘       │  │ Adapter │ │ Adapter │ │Adapter ││       └───────────────────┘
+                       │  └────┬────┘ └────┬────┘ └───┬────┘│
+┌──────────────┐       │       └────────────┴──────────┘     │
+│   OpenClaw   │──────▶│              │                      │
+│   Gateway    │◀──────│       Unified Telemetry             │
+└──────────────┘       └──────────────┬──────────────────────┘
+                                      │
                         traces, metrics, logs
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │   OTLP Backend      │
-                       │   (Grafana, etc.)   │
-                       └─────────────────────┘
+                                      │
+                                      ▼
+                       ┌─────────────────────────┐
+                       │    OTLP Backend         │
+                       │  (Grafana, Jaeger, etc) │
+                       └─────────────────────────┘
 ```
 
-The collector intercepts all traffic between your application and the Anthropic API. It parses requests and responses (including SSE streams), extracts telemetry, and forwards everything to your observability backend via OTLP. The proxy is fully transparent — your application receives the original API response unmodified.
+The collector intercepts all traffic between your application and LLM provider APIs. It automatically detects the provider, parses requests and responses (including SSE streams), extracts telemetry, and forwards everything to your observability backend via OTLP. The proxy is fully transparent — your application receives the original API response unmodified.
 
-When used with Claude Code, the collector automatically detects requests and extracts **project** context — grouping related API calls by working directory. This gives you cost, token, and request metrics broken down by project with zero configuration.
+## Supported Providers
+
+| Provider | Detection | Streaming | Cost Tracking |
+|----------|-----------|-----------|---------------|
+| **Anthropic** | `x-api-key` or `anthropic-version` header | SSE (`message_start`, `content_block_delta`, etc.) | Per-model with cache pricing |
+| **OpenAI** | `Authorization: Bearer sk-...` header | SSE (`data: {...}`, `data: [DONE]`) | Per-model with cached token pricing |
+| **Google Gemini** | `key` query parameter or `contents` in body | SSE with Gemini response format | Per-model pricing |
+
+Provider detection is automatic — the collector inspects request headers and body to route to the correct adapter.
 
 ## Quick Start
 
@@ -39,19 +55,21 @@ This exposes:
 
 | Port | Service                                  |
 | ---- | ---------------------------------------- |
-| 4319 | Anthropic receiver (point your SDK here) |
+| 4319 | LLM receiver (point your SDK here)       |
 | 3000 | Grafana UI                               |
 | 4317 | OTLP gRPC                                |
 | 4318 | OTLP HTTP                                |
 
-Then configure your Anthropic SDK to use the proxy:
+Then configure your LLM SDK to use the proxy:
 
 ```python
+# Anthropic
 import anthropic
+client = anthropic.Anthropic(base_url="http://localhost:4319")
 
-client = anthropic.Anthropic(
-    base_url="http://localhost:4319",
-)
+# OpenAI
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:4319")
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to explore traces, metrics, and logs in Grafana. Two dashboards are pre-provisioned — see [Dashboards](#dashboards) for details.
@@ -130,6 +148,44 @@ Once configured, the collector automatically:
 - Tracks tool usage (Edit, Write, Read, Bash, Glob, Grep) with file-level detail
 - Calculates per-request and per-project costs including fast mode and long context multipliers
 
+## OpenClaw Integration
+
+The collector provides first-class support for [OpenClaw](https://github.com/openclaw) multi-agent systems.
+
+### How it works
+
+OpenClaw sends custom headers with each LLM request that the collector extracts for telemetry:
+
+| Header | Description |
+|--------|-------------|
+| `X-OpenClaw-Agent-ID` | Unique agent identifier |
+| `X-OpenClaw-Session-Key` | Session key for grouping related calls |
+| `X-OpenClaw-Channel` | Communication channel (telegram, discord, slack, etc.) |
+| `X-OpenClaw-Workspace` | Workspace or project context |
+| `X-OpenClaw-Provider` | Target LLM provider name |
+| `X-OpenClaw-Target-URL` | Original provider API URL |
+
+These are mapped to OTel attributes (`openclaw.agent.id`, `openclaw.channel`, etc.) on all traces, metrics, and logs.
+
+### OpenClaw configuration
+
+Configure OpenClaw to route LLM traffic through the collector:
+
+```yaml
+# ~/.openclaw/openclaw.yaml
+models:
+  otel_collector:
+    enabled: true
+    base_url: "http://localhost:4319"
+```
+
+### What you get
+
+- **Per-agent cost tracking** across all providers
+- **Channel-level metrics** (latency, token usage, errors by channel)
+- **Workspace activity** dashboards
+- **End-to-end traces** from OpenClaw through the collector to provider APIs (via W3C `traceparent` propagation)
+
 ## Sending Data to Grafana Cloud
 
 To export telemetry to [Grafana Cloud](https://grafana.com/products/cloud/) instead of a local stack, configure the OTLP exporter with your Grafana Cloud OTLP endpoint and authentication token.
@@ -149,7 +205,7 @@ Create a `collector-config.yaml` with the OTLP HTTP exporter pointing to Grafana
 ```yaml
 receivers:
   anthropic:
-    endpoint: "0.0.0.0:4319"
+    endpoint: "127.0.0.1:4319"
 
 exporters:
   otlphttp:
@@ -201,8 +257,8 @@ The receiver is configured in the collector YAML under the `anthropic` key:
 ```yaml
 receivers:
   anthropic:
-    # HTTP server endpoint
-    endpoint: "0.0.0.0:4319"
+    # HTTP server endpoint (default: 127.0.0.1:4319)
+    endpoint: "127.0.0.1:4319"
 
     # Upstream Anthropic API URL
     anthropic_api: "https://api.anthropic.com"
@@ -261,6 +317,40 @@ service:
       exporters: [otlp_grpc]
 ```
 
+## Provider Adapter Architecture
+
+The collector uses a pluggable adapter framework for multi-provider support:
+
+```
+receiver/anthropicreceiver/
+├── adapter/
+│   ├── provider.go              # ProviderAdapter interface
+│   ├── registry.go              # Provider detection & routing
+│   ├── anthropic/adapter.go     # Anthropic Messages API
+│   ├── openai/adapter.go        # OpenAI Chat Completions API
+│   └── gemini/adapter.go        # Google Gemini API
+└── openclaw/
+    ├── context.go               # X-OpenClaw-* header extraction
+    └── attributes.go            # OTel attribute mapping
+```
+
+Each adapter implements the `ProviderAdapter` interface:
+
+```go
+type ProviderAdapter interface {
+    Name() string
+    Detect(req *http.Request, body []byte) bool
+    ParseRequest(body []byte) (*LLMRequest, error)
+    ParseResponse(body []byte, isStreaming bool) (*LLMResponse, error)
+    ExtractUsage(resp *LLMResponse) Usage
+    CalculateCost(usage Usage, model string, pricing map[string]ModelPricing) float64
+    GetUpstreamURL() string
+    ExtractContext(req *LLMRequest) map[string]string
+}
+```
+
+To add a new provider, implement this interface and register it with the adapter registry.
+
 ## Dashboards
 
 Two pre-built Grafana dashboards are included and auto-provisioned when using Docker Compose.
@@ -312,7 +402,7 @@ This collector is built with the [OpenTelemetry Collector Builder](https://opent
 
 | Component           | Type      | Description                                        |
 | ------------------- | --------- | -------------------------------------------------- |
-| `anthropicreceiver` | Receiver  | Anthropic API reverse proxy with telemetry capture |
+| `anthropicreceiver` | Receiver  | Multi-provider LLM API reverse proxy with telemetry capture |
 | `debugexporter`     | Exporter  | Prints telemetry to stdout                         |
 | `otlpexporter`      | Exporter  | Sends telemetry via gRPC                           |
 | `otlphttpexporter`  | Exporter  | Sends telemetry via HTTP                           |
