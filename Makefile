@@ -4,6 +4,7 @@ GOARCH       ?= $(shell go env GOARCH)
 OCB          := ./ocb
 DIST_DIR     := ./dist
 BINARY       := $(DIST_DIR)/anthropic-otel-collector
+CONFIG       := $(shell [ -f collector-config.local.yaml ] && echo collector-config.local.yaml || echo collector-config.yaml)
 
 .PHONY: install-ocb build run test lint clean docker-build docker-up docker-down dashboard
 
@@ -24,7 +25,7 @@ build: install-ocb
 
 ## run: Run the built collector with the example configuration.
 run: build
-	$(BINARY) --config collector-config.yaml
+	$(BINARY) --config $(CONFIG)
 
 ## test: Run all tests with race detection.
 test:

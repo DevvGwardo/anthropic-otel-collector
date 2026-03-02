@@ -68,6 +68,14 @@ make build
 make run
 ```
 
+To customise the configuration locally, copy the default and edit:
+
+```bash
+cp collector-config.yaml collector-config.local.yaml
+```
+
+`make run` automatically picks up `collector-config.local.yaml` when present. The local file is git-ignored.
+
 ### Running as a Background Service
 
 For running the collector as a persistent daemon, you can use the [Docker image](#docker-build) with your container runtime, or register the binary with [launchd](https://support.apple.com/guide/terminal/apdc6c1077b-5d5d-4d35-9c19-60f2397b2369/mac) (macOS) or [systemd](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html) (Linux).
@@ -76,7 +84,7 @@ For running the collector as a persistent daemon, you can use the [Docker image]
 
 ```bash
 make docker-build
-docker run -p 4319:4319 -v ./collector-config.yaml:/etc/otelcol/config.yaml:ro anthropic-otel-collector:latest
+docker run -p 4319:4319 -v ./collector-config.local.yaml:/etc/otelcol/config.yaml:ro anthropic-otel-collector:latest
 ```
 
 ## Using with Claude Code
