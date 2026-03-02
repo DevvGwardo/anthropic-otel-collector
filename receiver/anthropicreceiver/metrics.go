@@ -420,17 +420,18 @@ func (tb *telemetryBuilder) addHistogramDP(sm pmetric.ScopeMetrics, name, unit s
 	attrs.CopyTo(dp.Attributes())
 
 	// Populate explicit bucket boundaries when defined for this metric.
-	// Delta semantics: bucket[i] = 1 if value <= bounds[i], else 0.
-	// The +Inf bucket (index len(bounds)) always equals count (1).
+	// For explicit histograms, each observation increments exactly one bucket.
 	if bounds, ok := histogramBuckets[name]; ok {
 		dp.ExplicitBounds().FromRaw(bounds)
 		counts := make([]uint64, len(bounds)+1)
 		for i, b := range bounds {
 			if value <= b {
 				counts[i] = 1
+				dp.BucketCounts().FromRaw(counts)
+				return
 			}
 		}
-		counts[len(bounds)] = 1 // +Inf bucket always equals count
+		counts[len(bounds)] = 1 // +Inf bucket only when value exceeds all explicit bounds.
 		dp.BucketCounts().FromRaw(counts)
 	}
 }

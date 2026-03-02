@@ -19,6 +19,8 @@ type proxyRequestContext struct {
 	ctx             context.Context
 	startTime       time.Time
 	upstreamLatency time.Duration
+	httpMethod      string
+	httpPath        string
 	anthropicReq    *AnthropicRequest
 	requestBody     []byte
 	apiKeyHash      string
@@ -26,6 +28,23 @@ type proxyRequestContext struct {
 	requestID       string
 	betaFeatures    string
 	apiVersion      string
+}
+
+var hopByHopHeaders = map[string]struct{}{
+	"connection":          {},
+	"keep-alive":          {},
+	"proxy-authenticate":  {},
+	"proxy-authorization": {},
+	"te":                  {},
+	"trailer":             {},
+	"trailers":            {},
+	"transfer-encoding":   {},
+	"upgrade":             {},
+}
+
+func isHopByHopHeader(name string) bool {
+	_, ok := hopByHopHeaders[strings.ToLower(name)]
+	return ok
 }
 
 func (r *anthropicReceiver) handleProxy(w http.ResponseWriter, req *http.Request) {
@@ -58,9 +77,11 @@ func (r *anthropicReceiver) handleProxy(w http.ResponseWriter, req *http.Request
 		// Forward the request anyway — let the upstream validate
 	}
 
-	// Extract API key hash
-	apiKey := req.Header.Get("x-api-key")
-	apiKeyHash := hashAPIKey(apiKey)
+	// Extract API key hash (if redaction is enabled).
+	apiKeyHash := ""
+	if r.cfg.RedactAPIKey {
+		apiKeyHash = hashAPIKey(req.Header.Get("x-api-key"))
+	}
 
 	// Build upstream request
 	upstreamURL := r.upstreamURL.JoinPath(req.URL.Path)
@@ -77,7 +98,7 @@ func (r *anthropicReceiver) handleProxy(w http.ResponseWriter, req *http.Request
 	// Copy headers, but strip Accept-Encoding so we get uncompressed responses
 	// that we can parse for telemetry extraction.
 	for key, values := range req.Header {
-		if strings.EqualFold(key, "Accept-Encoding") {
+		if strings.EqualFold(key, "Accept-Encoding") || isHopByHopHeader(key) {
 			continue
 		}
 		for _, value := range values {
@@ -98,6 +119,9 @@ func (r *anthropicReceiver) handleProxy(w http.ResponseWriter, req *http.Request
 
 	// Copy response headers to client
 	for key, values := range resp.Header {
+		if isHopByHopHeader(key) {
+			continue
+		}
 		for _, value := range values {
 			w.Header().Add(key, value)
 		}
@@ -115,6 +139,8 @@ func (r *anthropicReceiver) handleProxy(w http.ResponseWriter, req *http.Request
 		ctx:             ctx,
 		startTime:       startTime,
 		upstreamLatency: upstreamLatency,
+		httpMethod:      req.Method,
+		httpPath:        req.URL.Path,
 		anthropicReq:    &anthropicReq,
 		requestBody:     bodyBytes,
 		apiKeyHash:      apiKeyHash,
@@ -194,6 +220,8 @@ func (r *anthropicReceiver) handleNonStreamingResponse(
 		startTime:       prc.startTime,
 		endTime:         endTime,
 		upstreamLatency: prc.upstreamLatency,
+		httpMethod:      prc.httpMethod,
+		httpPath:        prc.httpPath,
 		request:         prc.anthropicReq,
 		requestBody:     prc.requestBody,
 		requestSize:     len(prc.requestBody),
@@ -343,6 +371,8 @@ func (r *anthropicReceiver) handleStreamingResponse(
 		startTime:       prc.startTime,
 		endTime:         endTime,
 		upstreamLatency: prc.upstreamLatency,
+		httpMethod:      prc.httpMethod,
+		httpPath:        prc.httpPath,
 		request:         prc.anthropicReq,
 		requestBody:     prc.requestBody,
 		requestSize:     len(prc.requestBody),

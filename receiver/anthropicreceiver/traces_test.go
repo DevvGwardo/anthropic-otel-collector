@@ -164,6 +164,7 @@ func TestEmitTraces_NewSpanAttributes(t *testing.T) {
 
 func TestEmitTraces_GlobGrepEvents(t *testing.T) {
 	tb, tracesSink, _, _ := newTestTelemetryBuilder(t)
+	tb.cfg.IncludeFilePathLabel = true
 	data := newTestRequestData()
 	data.toolCalls = []ToolCallInfo{
 		{ToolName: "Glob", FilePath: "/src", Pattern: "**/*.go"},
