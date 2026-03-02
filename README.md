@@ -68,25 +68,9 @@ make build
 make run
 ```
 
-### Install as a Service
+### Running as a Background Service
 
-Builds the collector and registers it as a background service (launchd on macOS, systemd on Linux):
-
-```bash
-make install
-```
-
-This installs the binary to `/usr/local/bin/`, copies the default config to `~/.config/anthropic-otel-collector/config.yaml`, and starts the service. Edit the config file to point at your backend (e.g., Grafana Cloud) and restart:
-
-```bash
-make service-stop && make service-start
-```
-
-To remove:
-
-```bash
-make uninstall
-```
+For running the collector as a persistent daemon, you can use the [Docker image](#docker-build) with your container runtime, or register the binary with [launchd](https://support.apple.com/guide/terminal/apdc6c1077b-5d5d-4d35-9c19-60f2397b2369/mac) (macOS) or [systemd](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html) (Linux).
 
 ### Docker Build
 
@@ -309,11 +293,6 @@ make test           # Run tests with race detection
 make lint           # Run go vet
 make clean          # Remove build artifacts
 make dashboard      # Generate Grafana dashboards
-make install        # Build and install as a background service
-make uninstall      # Stop and remove the service and binary
-make service-start  # Start the installed service
-make service-stop   # Stop the installed service
-make service-status # Show service status
 ```
 
 ## Components
