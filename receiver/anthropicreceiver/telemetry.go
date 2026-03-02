@@ -78,6 +78,8 @@ type requestData struct {
 	requestBody []byte
 	requestSize int
 	apiKeyHash  string
+	httpMethod  string
+	httpPath    string
 
 	// Response
 	response     *AnthropicResponse
@@ -146,6 +148,20 @@ func (data *requestData) requestModel() string {
 		return data.response.Model
 	}
 	return "unknown"
+}
+
+func (data *requestData) requestHTTPMethod() string {
+	if data.httpMethod != "" {
+		return data.httpMethod
+	}
+	return "POST"
+}
+
+func (data *requestData) requestHTTPPath() string {
+	if data.httpPath != "" {
+		return data.httpPath
+	}
+	return "/v1/messages"
 }
 
 // hashAPIKey returns a truncated SHA256 hash of the API key for identification.

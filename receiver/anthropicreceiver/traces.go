@@ -16,6 +16,8 @@ func (tb *telemetryBuilder) emitTraces(ctx context.Context, data *requestData) e
 	ss.Scope().SetName("github.com/guicaulada/anthropic-otel-collector/receiver/anthropicreceiver")
 
 	model := data.requestModel()
+	httpMethod := data.requestHTTPMethod()
+	httpPath := data.requestHTTPPath()
 
 	// Root span
 	rootSpan := ss.Spans().AppendEmpty()
@@ -44,7 +46,7 @@ func (tb *telemetryBuilder) emitTraces(ctx context.Context, data *requestData) e
 
 	// Child span for upstream call
 	upstreamSpan := ss.Spans().AppendEmpty()
-	upstreamSpan.SetName("POST /v1/messages")
+	upstreamSpan.SetName(httpMethod + " " + httpPath)
 	upstreamSpan.SetKind(ptrace.SpanKindClient)
 	upstreamSpan.SetTraceID(rootSpan.TraceID())
 	upstreamSpan.SetParentSpanID(rootSpan.SpanID())
@@ -59,11 +61,11 @@ func (tb *telemetryBuilder) emitTraces(ctx context.Context, data *requestData) e
 	upstreamSpan.SetEndTimestamp(pcommon.NewTimestampFromTime(upstreamEnd))
 
 	upAttrs := upstreamSpan.Attributes()
-	upAttrs.PutStr("http.request.method", "POST")
+	upAttrs.PutStr("http.request.method", httpMethod)
 	upAttrs.PutStr("server.address", tb.serverHost)
 	upAttrs.PutInt("server.port", int64(tb.serverPort))
 	upAttrs.PutInt("http.response.status_code", int64(data.statusCode))
-	upAttrs.PutStr("url.full", tb.cfg.AnthropicAPI+"/v1/messages")
+	upAttrs.PutStr("url.full", tb.cfg.AnthropicAPI+httpPath)
 
 	if data.statusCode >= 400 {
 		upstreamSpan.Status().SetCode(ptrace.StatusCodeError)
@@ -76,10 +78,10 @@ func (tb *telemetryBuilder) setSpanAttributes(attrs pcommon.Map, data *requestDa
 	attrs.PutStr("gen_ai.operation.name", "chat")
 	attrs.PutStr("gen_ai.provider.name", "anthropic")
 	attrs.PutStr("gen_ai.request.model", data.requestModel())
-	attrs.PutStr("http.request.method", "POST")
+	attrs.PutStr("http.request.method", data.requestHTTPMethod())
 	attrs.PutStr("server.address", tb.serverHost)
 	attrs.PutInt("server.port", int64(tb.serverPort))
-	attrs.PutStr("url.path", "/v1/messages")
+	attrs.PutStr("url.path", data.requestHTTPPath())
 	attrs.PutBool("anthropic.request.streaming", data.isStreaming)
 
 	if data.apiKeyHash != "" {
@@ -379,7 +381,9 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 			ev := span.Events().AppendEmpty()
 			ev.SetName("anthropic.tool_use.file_edit")
 			ev.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
-			ev.Attributes().PutStr("file.path", tc.FilePath)
+			if tb.cfg.IncludeFilePathLabel && tc.FilePath != "" {
+				ev.Attributes().PutStr("file.path", tc.FilePath)
+			}
 			ev.Attributes().PutStr("file.extension", tc.FileExt)
 			ev.Attributes().PutInt("lines_added", int64(tc.LinesAdded))
 			ev.Attributes().PutInt("lines_removed", int64(tc.LinesRemoved))
@@ -387,14 +391,18 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 			ev := span.Events().AppendEmpty()
 			ev.SetName("anthropic.tool_use.file_create")
 			ev.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
-			ev.Attributes().PutStr("file.path", tc.FilePath)
+			if tb.cfg.IncludeFilePathLabel && tc.FilePath != "" {
+				ev.Attributes().PutStr("file.path", tc.FilePath)
+			}
 			ev.Attributes().PutStr("file.extension", tc.FileExt)
 			ev.Attributes().PutInt("content_size", int64(tc.WriteSize))
 		case "Read":
 			ev := span.Events().AppendEmpty()
 			ev.SetName("anthropic.tool_use.file_read")
 			ev.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
-			ev.Attributes().PutStr("file.path", tc.FilePath)
+			if tb.cfg.IncludeFilePathLabel && tc.FilePath != "" {
+				ev.Attributes().PutStr("file.path", tc.FilePath)
+			}
 			ev.Attributes().PutStr("file.extension", tc.FileExt)
 		case "Bash":
 			ev := span.Events().AppendEmpty()
@@ -406,7 +414,7 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 			ev.SetName("anthropic.tool_use.glob")
 			ev.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
 			ev.Attributes().PutStr("pattern", tc.Pattern)
-			if tc.FilePath != "" {
+			if tb.cfg.IncludeFilePathLabel && tc.FilePath != "" {
 				ev.Attributes().PutStr("file.path", tc.FilePath)
 			}
 		case "Grep":
@@ -414,7 +422,7 @@ func (tb *telemetryBuilder) addSpanEvents(span ptrace.Span, data *requestData) {
 			ev.SetName("anthropic.tool_use.grep")
 			ev.SetTimestamp(pcommon.NewTimestampFromTime(data.endTime))
 			ev.Attributes().PutStr("pattern", tc.Pattern)
-			if tc.FilePath != "" {
+			if tb.cfg.IncludeFilePathLabel && tc.FilePath != "" {
 				ev.Attributes().PutStr("file.path", tc.FilePath)
 			}
 		}

@@ -25,7 +25,7 @@ func TestFactory_CreateDefaultConfig(t *testing.T) {
 	rCfg, ok := cfg.(*Config)
 	require.True(t, ok)
 	assert.Equal(t, "https://api.anthropic.com", rCfg.AnthropicAPI)
-	assert.Equal(t, "0.0.0.0:4319", rCfg.ServerConfig.NetAddr.Endpoint)
+	assert.Equal(t, "127.0.0.1:4319", rCfg.ServerConfig.NetAddr.Endpoint)
 }
 
 func TestFactory_CreateTracesReceiver(t *testing.T) {

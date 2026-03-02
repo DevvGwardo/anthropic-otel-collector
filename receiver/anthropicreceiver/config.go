@@ -85,7 +85,7 @@ func defaultConfig() *Config {
 	return &Config{
 		ServerConfig: confighttp.ServerConfig{
 			NetAddr: confignet.AddrConfig{
-				Endpoint:  "0.0.0.0:4319",
+				Endpoint:  "127.0.0.1:4319",
 				Transport: confignet.TransportTypeTCP,
 			},
 		},

@@ -149,7 +149,7 @@ func TestConfig_Validate(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	cfg := defaultConfig()
 
-	assert.Equal(t, "0.0.0.0:4319", cfg.ServerConfig.NetAddr.Endpoint)
+	assert.Equal(t, "127.0.0.1:4319", cfg.ServerConfig.NetAddr.Endpoint)
 	assert.Equal(t, "https://api.anthropic.com", cfg.AnthropicAPI)
 	assert.Equal(t, int64(10*1024*1024), cfg.MaxRequestBodySize)
 	assert.False(t, cfg.CaptureRequestBody)
