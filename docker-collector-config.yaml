@@ -18,6 +18,10 @@ exporters:
 processors:
   batch: {}
 
+  # Delta-to-cumulative converts delta temporality metrics to cumulative.
+  # Required by backends like Grafana Cloud and Prometheus that expect cumulative temporality.
+  deltatocumulative: {}
+
 service:
   pipelines:
     traces:
@@ -26,7 +30,7 @@ service:
       exporters: [debug, otlp_grpc]
     metrics:
       receivers: [anthropic]
-      processors: [batch]
+      processors: [deltatocumulative, batch]
       exporters: [debug, otlp_grpc]
     logs:
       receivers: [anthropic]

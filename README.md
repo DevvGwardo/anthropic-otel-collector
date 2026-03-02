@@ -159,6 +159,7 @@ exporters:
 
 processors:
   batch: {}
+  deltatocumulative: {}
 
 service:
   pipelines:
@@ -168,13 +169,15 @@ service:
       exporters: [otlphttp]
     metrics:
       receivers: [anthropic]
-      processors: [batch]
+      processors: [deltatocumulative, batch]
       exporters: [otlphttp]
     logs:
       receivers: [anthropic]
       processors: [batch]
       exporters: [otlphttp]
 ```
+
+> **Note:** The `deltatocumulative` processor is required for Grafana Cloud and other Prometheus-compatible backends that expect cumulative temporality for histogram and counter metrics.
 
 Generate the `Authorization` header value:
 

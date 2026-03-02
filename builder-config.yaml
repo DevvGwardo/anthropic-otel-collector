@@ -14,6 +14,7 @@ exporters:
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.146.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.146.0
 
 replaces:
   - github.com/guicaulada/anthropic-otel-collector/receiver/anthropicreceiver => ../receiver/anthropicreceiver
