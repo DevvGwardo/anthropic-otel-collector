@@ -1,0 +1,11 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates
+
+COPY anthropic-otel-collector /usr/local/bin/anthropic-otel-collector
+
+# 4319  - Anthropic receiver (HTTP proxy)
+# 13133 - Health check extension
+EXPOSE 4319 13133
+
+ENTRYPOINT ["anthropic-otel-collector", "--config=/etc/otelcol/config.yaml"]

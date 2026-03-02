@@ -1,0 +1,53 @@
+version: 2
+
+project_name: anthropic-otel-collector
+
+dist: .release
+
+before:
+  hooks:
+    - make install-ocb
+    - bash -c "GOWORK=off ./ocb --config builder-config.yaml --skip-compilation"
+
+builds:
+  - dir: ./dist
+    binary: anthropic-otel-collector
+    env:
+      - CGO_ENABLED=0
+      - GOWORK=off
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+dockers_v2:
+  - images:
+      - "ghcr.io/guicaulada/anthropic-otel-collector"
+    dockerfile: Dockerfile.release
+    tags:
+      - "{{ .Version }}"
+      - latest
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+    - title: Refactoring
+      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
+    - title: Documentation
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+    - title: Other
+      order: 999
+
+release:
+  name_template: "{{ .ProjectName }} {{ .Tag }}"

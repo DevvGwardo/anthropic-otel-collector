@@ -1,5 +1,6 @@
 # Build output
 dist/
+.release/
 
 # OpenTelemetry Collector Builder binary
 ocb
