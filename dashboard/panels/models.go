@@ -34,7 +34,7 @@ func RequestsByModel() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum by (gen_ai_request_model) (increase(%s{%s}[$__range]))`, MetricRequests, filter),
+			fmt.Sprintf(`round(sum by (gen_ai_request_model) (increase(%s{%s}[$__range])))`, MetricRequests, filter),
 			"{{gen_ai_request_model}}",
 		)).
 		PieType(piechart.PieChartTypeDonut).
@@ -58,7 +58,7 @@ func StopReasons() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum by (stop_reason) (increase(%s{%s}[$__range]))`, MetricStopReason, filter),
+			fmt.Sprintf(`round(sum by (stop_reason) (increase(%s{%s}[$__range])))`, MetricStopReason, filter),
 			"{{stop_reason}}",
 		)).
 		PieType(piechart.PieChartTypeDonut).
@@ -82,7 +82,7 @@ func ContentBlockTypes() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(12).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum by (type) (increase(%s{%s}[$__range]))`, MetricContentBlocks, filter),
+			fmt.Sprintf(`round(sum by (type) (increase(%s{%s}[$__range])))`, MetricContentBlocks, filter),
 			"{{type}}",
 		)).
 		Orientation(common.VizOrientationHorizontal).
@@ -117,7 +117,7 @@ func RequestsBySpeed() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum by (speed) (increase(%s{%s}[$__range]))`, MetricRequestsBySpeed, filter),
+			fmt.Sprintf(`round(sum by (speed) (increase(%s{%s}[$__range])))`, MetricRequestsBySpeed, filter),
 			"{{speed}}",
 		)).
 		PieType(piechart.PieChartTypeDonut).
@@ -175,7 +175,7 @@ func ThinkingEnabledRequests() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s}[$__range]))`, MetricThinkingEnabled, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s}[$__range])))`, MetricThinkingEnabled, filter),
 			"",
 		)).
 		Unit("short").
@@ -192,15 +192,15 @@ func ServerToolUse() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s}[$__range]))`, MetricServerToolWebSearch, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s}[$__range])))`, MetricServerToolWebSearch, filter),
 			"Web Search",
 		)).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s}[$__range]))`, MetricServerToolWebFetch, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s}[$__range])))`, MetricServerToolWebFetch, filter),
 			"Web Fetch",
 		)).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s}[$__range]))`, MetricServerToolCodeExecution, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s}[$__range])))`, MetricServerToolCodeExecution, filter),
 			"Code Execution",
 		)).
 		Orientation(common.VizOrientationHorizontal).

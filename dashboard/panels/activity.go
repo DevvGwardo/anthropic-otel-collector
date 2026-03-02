@@ -27,7 +27,7 @@ func TotalLinesChanged() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_lines_added_total{`+filter+`}[$__range])) + sum(increase(anthropic_tool_use_lines_removed_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_lines_added_total{`+filter+`}[$__range])) + sum(increase(anthropic_tool_use_lines_removed_total{`+filter+`}[$__range])))`,
 				"Total Lines Changed",
 			),
 		)
@@ -50,7 +50,7 @@ func TotalFilesTouched() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_files_touched_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_files_touched_total{`+filter+`}[$__range])))`,
 				"Total Files Touched",
 			),
 		)
@@ -78,7 +78,7 @@ func ProjectRequestsBreakdown() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				fmt.Sprintf(`sum by (claude_code_project_name) (increase(%s{%s}[$__range]))`, MetricProjectRequests, projectFilter),
+				fmt.Sprintf(`round(sum by (claude_code_project_name) (increase(%s{%s}[$__range])))`, MetricProjectRequests, projectFilter),
 				"{{claude_code_project_name}}",
 			),
 		).

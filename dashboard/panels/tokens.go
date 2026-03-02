@@ -94,13 +94,13 @@ func InputVsOutputBreakdown() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_input_total{%s}[$__range]))`),
+				f(`round(sum(increase(anthropic_tokens_input_total{%s}[$__range])))`),
 				"Input",
 			),
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_output_total{%s}[$__range]))`),
+				f(`round(sum(increase(anthropic_tokens_output_total{%s}[$__range])))`),
 				"Output",
 			),
 		)

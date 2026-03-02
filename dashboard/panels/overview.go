@@ -47,7 +47,7 @@ func TotalRequests() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`sum(increase(anthropic_requests_total{%s}[$__range]))`),
+				f(`round(sum(increase(anthropic_requests_total{%s}[$__range])))`),
 				"Total Requests",
 			),
 		)
@@ -116,7 +116,7 @@ func TotalTokens() cog.Builder[dashboard.Panel] {
 		).
 		WithTarget(
 			promInstantQuery(
-				f(`sum(increase(anthropic_tokens_input_total{%s}[$__range])) + sum(increase(anthropic_tokens_output_total{%s}[$__range]))`),
+				f(`round(sum(increase(anthropic_tokens_input_total{%s}[$__range])) + sum(increase(anthropic_tokens_output_total{%s}[$__range])))`),
 				"Total Tokens",
 			),
 		)

@@ -19,7 +19,7 @@ func ToolCallDistribution() cog.Builder[dashboard.Panel] {
 		Span(12).
 		WithTarget(
 			promRangeQuery(
-				`sum by (tool_name) (increase(anthropic_tool_use_calls_total{`+filter+`}[$__range]))`,
+				`round(sum by (tool_name) (increase(anthropic_tool_use_calls_total{`+filter+`}[$__range])))`,
 				"{{tool_name}}",
 			),
 		).
@@ -67,19 +67,19 @@ func FileOperations() cog.Builder[dashboard.Panel] {
 		Span(8).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_file_edits_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_file_edits_total{`+filter+`}[$__range])))`,
 				"Edits",
 			),
 		).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_file_creates_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_file_creates_total{`+filter+`}[$__range])))`,
 				"Creates",
 			),
 		).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_file_reads_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_file_reads_total{`+filter+`}[$__range])))`,
 				"Reads",
 			),
 		).
@@ -141,7 +141,7 @@ func FileTypesWorkedOn() cog.Builder[dashboard.Panel] {
 		Span(12).
 		WithTarget(
 			promInstantQuery(
-				`topk(10, sum by (file_extension) (increase(anthropic_tool_use_file_type_total{`+filter+`}[$__range])))`,
+				`topk(10, round(sum by (file_extension) (increase(anthropic_tool_use_file_type_total{`+filter+`}[$__range]))))`,
 				"{{file_extension}}",
 			),
 		).
@@ -159,7 +159,7 @@ func BashCommands() cog.Builder[dashboard.Panel] {
 		Span(4).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_bash_commands_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_bash_commands_total{`+filter+`}[$__range])))`,
 				"",
 			),
 		).
@@ -177,7 +177,7 @@ func SearchOperations() cog.Builder[dashboard.Panel] {
 		Span(4).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_grep_searches_total{`+filter+`}[$__range])) + sum(increase(anthropic_tool_use_glob_searches_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_grep_searches_total{`+filter+`}[$__range])) + sum(increase(anthropic_tool_use_glob_searches_total{`+filter+`}[$__range])))`,
 				"",
 			),
 		).
@@ -195,7 +195,7 @@ func FilesTouched() cog.Builder[dashboard.Panel] {
 		Span(4).
 		WithTarget(
 			promInstantQuery(
-				`sum(increase(anthropic_tool_use_files_touched_total{`+filter+`}[$__range]))`,
+				`round(sum(increase(anthropic_tool_use_files_touched_total{`+filter+`}[$__range])))`,
 				"",
 			),
 		).

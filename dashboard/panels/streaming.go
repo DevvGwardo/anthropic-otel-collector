@@ -118,11 +118,11 @@ func StreamingVsNonStreaming() cog.Builder[dashboard.Panel] {
 		Height(8).
 		Span(6).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s, anthropic_request_streaming="true"}[$__range]))`, MetricRequests, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s, anthropic_request_streaming="true"}[$__range])))`, MetricRequests, filter),
 			"Streaming",
 		)).
 		WithTarget(instantQuery(
-			fmt.Sprintf(`sum(increase(%s{%s, anthropic_request_streaming="false"}[$__range]))`, MetricRequests, filter),
+			fmt.Sprintf(`round(sum(increase(%s{%s, anthropic_request_streaming="false"}[$__range])))`, MetricRequests, filter),
 			"Non-Streaming",
 		)).
 		PieType(piechart.PieChartTypeDonut).
