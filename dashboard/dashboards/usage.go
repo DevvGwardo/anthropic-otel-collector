@@ -1,4 +1,4 @@
-package main
+package dashboards
 
 import (
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
@@ -8,7 +8,7 @@ import (
 	"github.com/guicaulada/anthropic-otel-collector/dashboard/panels"
 )
 
-func buildDashboard() (dashboard.Dashboard, error) {
+func BuildUsage() (dashboard.Dashboard, error) {
 	builder := dashboard.NewDashboardBuilder("Anthropic Claude Code Usage").
 		Uid("anthropic-claude-code-usage").
 		Description("Comprehensive monitoring for Anthropic Claude Code API usage via the anthropic-otel-collector").
@@ -17,7 +17,7 @@ func buildDashboard() (dashboard.Dashboard, error) {
 		Time("now-6h", "now").
 		Timezone("browser").
 		Tooltip(dashboard.DashboardCursorSyncCrosshair).
-		Variables(buildVariables()).
+		Variables(buildUsageVariables()).
 		// Row 1: Overview
 		WithRow(dashboard.NewRowBuilder("Overview")).
 		WithPanel(panels.TotalCost()).
@@ -95,7 +95,7 @@ func buildDashboard() (dashboard.Dashboard, error) {
 	return builder.Build()
 }
 
-func buildVariables() []cog.Builder[dashboard.VariableModel] {
+func buildUsageVariables() []cog.Builder[dashboard.VariableModel] {
 	dsVar := dashboard.NewDatasourceVariableBuilder("datasource").
 		Label("Data Source").
 		Type("prometheus").
@@ -153,8 +153,4 @@ func buildVariables() []cog.Builder[dashboard.VariableModel] {
 		apiKeyVar,
 		projectVar,
 	}
-}
-
-func boolPtr(b bool) *bool {
-	return &b
 }

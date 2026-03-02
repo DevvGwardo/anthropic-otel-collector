@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
+
+	"github.com/guicaulada/anthropic-otel-collector/dashboard/dashboards"
 )
 
 type dashboardDef struct {
@@ -20,13 +22,12 @@ func main() {
 	outputDir := flag.String("output-dir", "", "Directory to write dashboard JSON files (stdout if empty)")
 	flag.Parse()
 
-	dashboards := []dashboardDef{
-		{"main", "anthropic-claude-code-usage.json", buildDashboard},
-		{"developer-activity", "claude-code-developer-activity.json", buildActivityDashboard},
-		{"coding-stats", "claude-code-coding-stats.json", buildCodingStatsDashboard},
+	defs := []dashboardDef{
+		{"main", "anthropic-claude-code-usage.json", dashboards.BuildUsage},
+		{"developer-activity", "claude-code-developer-activity.json", dashboards.BuildActivity},
 	}
 
-	for _, d := range dashboards {
+	for _, d := range defs {
 		dash, err := d.builder()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to build %s dashboard: %v\n", d.name, err)
